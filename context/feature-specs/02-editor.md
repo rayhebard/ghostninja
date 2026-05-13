@@ -1,8 +1,8 @@
-We need the base chrome componnets that fram every editor screen - the top navigotor and the left sidebar shell. These will be reused and extendin every chapter that follows.
+We need the base chrome components that fram every editor screen - the top navigotor and the left sidebar shell. These will be reused and extend in every chapter that follows.
 
 ### Editor Navbar
 
-Create `componnets/editor/editor-navbar.tsx`
+Create `components/editor/editor-navbar.tsx`
 
 Requirements:
 - fixed height top Navbar
@@ -18,7 +18,7 @@ Create `componnets/editor/project-sidebar.tsx`
 
 Requirements:
 
-- sidebar should floar above the editor canvas
+- sidebar should float above the editor canvas
 - opening it should not push page content
 - slide in from the left
 - accepts `isOpen`  prop
@@ -43,7 +43,7 @@ Do not build actual dialogs yet.
 
 ### Check when done
 
-- new componets compiled without Typescript Errors
+- new components compiled without Typescript Errors
 - no lint error 
 - dialog pattern is ready for future use.
 
