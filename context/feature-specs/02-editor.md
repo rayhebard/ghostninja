@@ -1,4 +1,4 @@
-We need the base chrome components that fram every editor screen - the top navigotor and the left sidebar shell. These will be reused and extend in every chapter that follows.
+We need the base chrome components that frame every editor screen - the top navigator and the left sidebar shell. These will be reused and extended in every chapter that follows.
 
 ### Editor Navbar
 
@@ -14,7 +14,7 @@ Requirements:
 
 ### Project sidebar
 
-Create `componnets/editor/project-sidebar.tsx`
+Create `components/editor/project-sidebar.tsx`
 
 Requirements:
 
