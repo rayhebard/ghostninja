@@ -81,7 +81,7 @@ function ProjectItem({
               e.stopPropagation()
               setMenuOpen((prev) => !prev)
             }}
-            className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-elevated transition-opacity"
+            className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1 rounded-md hover:bg-elevated transition-opacity"
             aria-label="Project actions"
             aria-expanded={menuOpen}
             aria-controls={menuId}

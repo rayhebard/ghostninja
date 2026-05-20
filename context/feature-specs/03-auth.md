@@ -32,7 +32,7 @@ Define public routes using the existing sign-in and sign-up env vars. Protect ev
 Update `/`:
 
 - authenticated users redirect to `editor`
-- unauthenicated users redirect to `/sign-in`
+- unauthenticated users redirect to `/sign-in`
 
 Add Clerk's built-in `UserButton` to the editor navbar right secion forprofile settings and logout.
 
@@ -46,7 +46,7 @@ install: @clerk/ui.
 
 ## Check When Done
 
-- `proxy.ts` exist at the root
+- `proxy.ts` exists at the root
 - all routes are protected excepts public auth paths
 - auth pages use CSS variables with no hardcoded colors
 - `ClerkProvider` wraps the root layout

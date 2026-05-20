@@ -1,6 +1,6 @@
-When I click the signout button I am taken to page which does says rendering at the bottom and never completes
+When I click the sign-out button I am taken to a page that displays 'rendering' at the bottom and never finishes loading
 
-This also happens sometimes when I log
+This also sometimes happens when I log in
 
 ---
 

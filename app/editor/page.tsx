@@ -1,5 +1,3 @@
-"use client"
-
 import { EditorHome } from "@/components/editor/editor-home"
 
 export default function EditorPage() {
