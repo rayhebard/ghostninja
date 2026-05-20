@@ -34,8 +34,8 @@ yarn-error.log*
 .env*
 
 # local tracking files
-context/current_issues.md
-/context/current_issues.md
+
+#/context/current_issues.md
 
 # vercel
 .vercel
