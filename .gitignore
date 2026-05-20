@@ -33,6 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# local tracking files
+context/current_issues.md
+/context/current_issues.md
+
 # vercel
 .vercel
 

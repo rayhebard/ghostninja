@@ -7,6 +7,9 @@
 }
 
 @theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
   --color-base: #080809;
   --color-surface: #111114;
   --color-elevated: #18181c;

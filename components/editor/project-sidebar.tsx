@@ -13,6 +13,9 @@ interface ProjectSidebarProps {
 export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
   return (
     <aside
+      aria-hidden={!isOpen}
+      inert={isOpen ? undefined : true}
+      tabIndex={isOpen ? 0 : -1}
       className={cn(
         "fixed left-0 top-12 bottom-0 z-40",
         "w-64",
@@ -20,7 +23,9 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
         "flex flex-col",
         "shadow-2xl",
         "transition-transform duration-200 ease-in-out",
-        isOpen ? "translate-x-0" : "-translate-x-full"
+        isOpen
+          ? "translate-x-0 visible pointer-events-auto"
+          : "-translate-x-full invisible pointer-events-none"
       )}
     >
       <div className="flex items-center justify-between px-4 h-12 border-b border-border-default">
