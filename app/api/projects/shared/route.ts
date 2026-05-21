@@ -17,8 +17,10 @@ export async function GET() {
       return NextResponse.json([])
     }
 
+    const normalizedEmail = primaryEmail.trim().toLowerCase()
+
     const records = await prisma.projectCollaborator.findMany({
-      where: { email: primaryEmail },
+      where: { email: normalizedEmail },
       include: { project: true },
     })
 

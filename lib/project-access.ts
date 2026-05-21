@@ -23,9 +23,10 @@ export async function getProjectAccess(roomId: string): Promise<ProjectAccess> {
   }
 
   const user = await currentUser()
-  const primaryEmail =
+  const rawEmail =
     user?.emailAddresses.find((e) => e.id === user.primaryEmailAddressId)
       ?.emailAddress ?? null
+  const primaryEmail = rawEmail?.trim().toLowerCase() ?? null
 
   const project = await prisma.project.findUnique({
     where: { id: roomId },
