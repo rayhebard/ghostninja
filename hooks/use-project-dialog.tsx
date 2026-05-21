@@ -1,35 +1,38 @@
 "use client"
 
 import { useState, useCallback, createContext, useContext } from "react"
+import { useRouter, usePathname } from "next/navigation"
 
 export interface Project {
   id: string
+  ownerId: string
   name: string
-  slug: string
-  owned: boolean
+  description: string | null
+  status: string
+  createdAt: string
+  updatedAt: string
 }
 
 export type DialogType = "create" | "rename" | "delete" | null
 
 export function toSlug(name: string): string {
-  return name
+  const slug = name
     .toLowerCase()
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9-]/g, "")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
+  return slug || "untitled"
 }
 
-export const mockProjects: Project[] = [
-  { id: "p1", name: "Microservices Architecture", slug: "microservices-architecture", owned: true },
-  { id: "p2", name: "API Gateway Design", slug: "api-gateway-design", owned: true },
-]
-
-export const mockSharedProjects: Project[] = [
-  { id: "p3", name: "Team Infrastructure", slug: "team-infrastructure", owned: false },
-]
+function shortId(): string {
+  return Math.random().toString(36).substring(2, 6)
+}
 
 interface ProjectDialogContextValue {
+  projects: Project[]
+  sharedProjects: Project[]
+  loading: boolean
   dialog: DialogType
   selectedProject: Project | null
   name: string
@@ -38,6 +41,9 @@ interface ProjectDialogContextValue {
   openRename: (project: Project) => void
   openDelete: (project: Project) => void
   close: () => void
+  createProject: () => Promise<void>
+  renameProject: () => Promise<void>
+  deleteProject: () => Promise<void>
 }
 
 const ProjectDialogContext = createContext<ProjectDialogContextValue | null>(null)
@@ -48,7 +54,42 @@ export function useProjectDialogContext() {
   return ctx
 }
 
-export function useProjectDialogState() {
+async function apiCreateProject(name: string, description: string | null): Promise<Project | null> {
+  const res = await fetch("/api/projects", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, description }),
+  })
+  if (!res.ok) return null
+  return res.json()
+}
+
+async function apiRenameProject(id: string, name: string): Promise<Project | null> {
+  const res = await fetch(`/api/projects/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  })
+  if (!res.ok) return null
+  return res.json()
+}
+
+async function apiDeleteProject(id: string): Promise<boolean> {
+  const res = await fetch(`/api/projects/${id}`, {
+    method: "DELETE",
+  })
+  return res.ok
+}
+
+export function useProjectDialogState(
+  initialProjects: Project[] = [],
+  initialSharedProjects: Project[] = [],
+) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const [projects, setProjects] = useState<Project[]>(initialProjects)
+  const [sharedProjects, setSharedProjects] = useState<Project[]>(initialSharedProjects)
+  const [loading, setLoading] = useState(false)
   const [dialog, setDialog] = useState<DialogType>(null)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [name, setName] = useState("")
@@ -77,7 +118,45 @@ export function useProjectDialogState() {
     setName("")
   }, [])
 
+  const createProject = useCallback(async () => {
+    const project = await apiCreateProject(name, null)
+    if (project) {
+      setProjects((prev) => [project, ...prev])
+      close()
+      router.push(`/editor/${project.id}`)
+    }
+  }, [name, close, router])
+
+  const renameProject = useCallback(async () => {
+    if (!selectedProject) return
+    const updated = await apiRenameProject(selectedProject.id, name)
+    if (updated) {
+      setProjects((prev) =>
+        prev.map((p) => (p.id === updated.id ? updated : p))
+      )
+    }
+    close()
+    router.refresh()
+  }, [selectedProject, name, close, router])
+
+  const deleteProject = useCallback(async () => {
+    if (!selectedProject) return
+    const ok = await apiDeleteProject(selectedProject.id)
+    if (ok) {
+      setProjects((prev) => prev.filter((p) => p.id !== selectedProject.id))
+      if (pathname === `/editor/${selectedProject.id}`) {
+        router.push("/editor")
+      } else {
+        router.refresh()
+      }
+    }
+    close()
+  }, [selectedProject, close, pathname, router])
+
   return {
+    projects,
+    sharedProjects,
+    loading,
     dialog,
     selectedProject,
     name,
@@ -86,6 +165,9 @@ export function useProjectDialogState() {
     openRename,
     openDelete,
     close,
+    createProject,
+    renameProject,
+    deleteProject,
   }
 }
 

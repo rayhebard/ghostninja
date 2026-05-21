@@ -1,11 +1,10 @@
-Starting CodeRabbit review in plain text mode...
-
-Review directory: /Users/raymondhebard/ghostai
-
-Connecting to review service
-
-You're working in an OSS repo. OSS attribution/rules apply.
-Setting up
-Preparing sandbox
-Summarizing
-Tools completed
+{"type":"review_context","reviewType":"all","currentBranch":"development","baseBranch":"main","workingDirectory":"/Users/raymondhebard/ghostai"}
+{"type":"status","phase":"connecting","status":"connecting_to_review_service"}
+{"type":"status","phase":"setup","status":"setting_up"}
+{"type":"status","phase":"setup","status":"preparing_sandbox"}
+{"type":"status","phase":"analyzing","status":"summarizing"}
+{"type":"status","phase":"analyzing","status":"tools_completed"}
+{"type":"status","phase":"analyzing","status":"reviewing"}
+{"type":"finding","severity":"minor","fileName":"app/api/projects/route.ts","codegenInstructions":"Verify each finding against current code. Fix only still-valid issues, skip the rest with a brief reason, keep changes minimal, and validate.\n\nIn @app/api/projects/route.ts around lines 103 - 107, The variable id is declared as string but assigned from request.json() (body.id) which can be any JSON type; change the declaration of id from string to unknown (matching the PATCH handler pattern) so runtime assignment doesn't violate the type, then keep the subsequent runtime validation logic (the validation at/after the existing check around id) unchanged; reference the id variable and the request.json() assignment in route.ts when making this change.","suggestions":["  let id: unknown;\n\n  try {\n    const body = await request.json();\n    id = body.id;"]}
+{"type":"finding","severity":"minor","fileName":"hooks/use-project-dialog.tsx","codegenInstructions":"Verify each finding against current code. Fix only still-valid issues, skip the rest with a brief reason, keep changes minimal, and validate.\n\nIn @hooks/use-project-dialog.tsx around lines 130 - 140, The renameProject and deleteProject callbacks currently call close() and router.refresh() unconditionally, so change both handlers (renameProject, deleteProject) to only call close() and router.refresh() when their respective API calls (apiRenameProject, apiDeleteProject) return a successful result (e.g., non-null/true); when the API call fails, do not close the dialog—leave it open and surface failure (e.g., set an error state or simply return) and only update state (setProjects / remove from projects) on success. Ensure the selectedProject guard remains, and keep existing state updates (setProjects mapping for renameProject and filter/remove for deleteProject) inside the success branch so failures do not mutate UI.","suggestions":[]}
+{"type":"finding","severity":"minor","fileName":"app/api/projects/route.ts","codegenInstructions":"Verify each finding against current code. Fix only still-valid issues, skip the rest with a brief reason, keep changes minimal, and validate.\n\nIn @app/api/projects/route.ts around lines 26 - 49, The POST handler currently calls request.json() without error handling which will throw on malformed JSON; update the POST function to wrap the request.json() call in a try-catch, return a 400 NextResponse.json({ error: \"Bad Request\" }) on JSON parse errors, and ensure after parsing you validate that body is an object before accessing body.name/body.description (then proceed to trim/normalize and call prisma.project.create as before); reference the POST function and its use of request.json(), name/description normalization, and prisma.project.create when making the change.","suggestions":[]}

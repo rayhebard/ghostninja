@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { Loader2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -14,7 +16,7 @@ interface DeleteProjectDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   project: Project | null
-  onSubmit: () => void
+  onSubmit: () => void | Promise<void>
 }
 
 export function DeleteProjectDialog({
@@ -23,6 +25,18 @@ export function DeleteProjectDialog({
   project,
   onSubmit,
 }: DeleteProjectDialogProps) {
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleDelete = async () => {
+    setIsLoading(true)
+    try {
+      await onSubmit()
+      onOpenChange(false)
+    } catch {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -35,10 +49,11 @@ export function DeleteProjectDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" disabled={isLoading} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={onSubmit}>
+          <Button variant="destructive" disabled={isLoading} onClick={handleDelete}>
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             Delete
           </Button>
         </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useMemo } from "react"
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,8 @@ export function CreateProjectDialog({
 }: CreateProjectDialogProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const slug = toSlug(name)
+  const suffix = useMemo(() => Math.random().toString(36).substring(2, 6), [open])
+  const roomId = slug ? `${slug}-${suffix}` : ""
 
   useEffect(() => {
     if (open) {
@@ -64,8 +66,8 @@ export function CreateProjectDialog({
           {name.trim() ? (
             slug ? (
               <div className="space-y-1 rounded-md bg-subtle px-3 py-2">
-                <p className="text-xs text-copy-muted">URL slug (auto-generated)</p>
-                <p className="text-sm font-mono text-copy-secondary break-all">{slug}</p>
+                <p className="text-xs text-copy-muted">Room ID (auto-generated)</p>
+                <p className="text-sm font-mono text-copy-secondary break-all">{roomId}</p>
               </div>
             ) : (
               <p className="text-xs text-state-error">

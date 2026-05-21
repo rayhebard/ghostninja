@@ -4,11 +4,7 @@ import { X, Plus, EllipsisVertical, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
-import {
-  mockProjects,
-  mockSharedProjects,
-  useProjectDialogContext,
-} from "@/hooks/use-project-dialog"
+import { useProjectDialogContext } from "@/hooks/use-project-dialog"
 import { useState, useId, useRef, useCallback, useEffect } from "react"
 
 interface ProjectSidebarProps {
@@ -136,7 +132,7 @@ function ProjectItem({
 }
 
 export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
-  const { openCreate, openRename, openDelete } = useProjectDialogContext()
+  const { projects, sharedProjects, loading, openCreate, openRename, openDelete } = useProjectDialogContext()
 
   return (
     <>
@@ -186,7 +182,11 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="my-projects" className="mt-2 space-y-0.5">
-                {mockProjects.length === 0 ? (
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <p className="text-sm text-copy-muted">Loading...</p>
+                  </div>
+                ) : projects.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <p className="text-sm text-copy-muted">No projects yet.</p>
                     <p className="text-xs text-copy-faint mt-1">
@@ -194,11 +194,11 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
                     </p>
                   </div>
                 ) : (
-                  mockProjects.map((p) => (
+                  projects.map((p) => (
                     <ProjectItem
                       key={p.id}
                       name={p.name}
-                      owned={p.owned}
+                      owned={true}
                       onRename={() => openRename(p)}
                       onDelete={() => openDelete(p)}
                     />
@@ -206,7 +206,7 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
                 )}
               </TabsContent>
               <TabsContent value="shared" className="mt-2 space-y-0.5">
-                {mockSharedProjects.length === 0 ? (
+                {sharedProjects.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <p className="text-sm text-copy-muted">No shared projects.</p>
                     <p className="text-xs text-copy-faint mt-1">
@@ -214,11 +214,11 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
                     </p>
                   </div>
                 ) : (
-                  mockSharedProjects.map((p) => (
+                  sharedProjects.map((p) => (
                     <ProjectItem
                       key={p.id}
                       name={p.name}
-                      owned={p.owned}
+                      owned={false}
                       onRename={() => openRename(p)}
                       onDelete={() => openDelete(p)}
                     />

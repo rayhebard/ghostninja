@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
+import { Loader2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -18,7 +19,7 @@ interface RenameProjectDialogProps {
   project: Project | null
   name: string
   onNameChange: (name: string) => void
-  onSubmit: () => void
+  onSubmit: () => void | Promise<void>
 }
 
 export function RenameProjectDialog({
@@ -29,6 +30,7 @@ export function RenameProjectDialog({
   onNameChange,
   onSubmit,
 }: RenameProjectDialogProps) {
+  const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -36,6 +38,16 @@ export function RenameProjectDialog({
       setTimeout(() => inputRef.current?.focus(), 0)
     }
   }, [open])
+
+  const handleSubmit = async () => {
+    setLoading(true)
+    try {
+      await Promise.resolve(onSubmit())
+      onOpenChange(false)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -54,17 +66,19 @@ export function RenameProjectDialog({
           <Input
             ref={inputRef}
             value={name}
+            disabled={loading}
             onChange={(e) => onNameChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && name.trim()) onSubmit()
+              if (e.key === "Enter" && name.trim() && !loading) handleSubmit()
             }}
           />
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" disabled={loading} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button disabled={!name.trim()} onClick={onSubmit}>
+          <Button disabled={!name.trim() || loading} onClick={handleSubmit}>
+            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             Rename
           </Button>
         </div>
