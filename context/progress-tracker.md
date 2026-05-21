@@ -4,13 +4,15 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Auth integration — Clerk sign-in/sign-up, route protection, redirects
+- Editor home wired to API (server-side initial load)
 
 ## Current Goal
 
-- Implement full auth flow: Clerk provider, proxy.ts route protection, auth pages, redirects
+- Individual editor workspace page
 
 ## Completed
+
+(all previous items plus:)
 
 - Created `lib/utils.ts` with `cn()` helper using clsx + tailwind-merge
 - Installed `lucide-react`, `class-variance-authority`, `clsx`, `tailwind-merge`
@@ -28,10 +30,34 @@ Update this file whenever the current phase, active feature, or implementation s
 - Installed `@clerk/ui` for bundled Clerk UI and theme system
 - Created `proxy.ts` at root — protected-first middleware via `clerkMiddleware`, public routes: `/`, `/sign-in(.*)`, `/sign-up(.*)`
 - Updated `app/layout.tsx` — `ClerkProvider` uses Clerk's `dark` theme from `@clerk/ui/themes`, bundled `ui` from `@clerk/ui`, and `variables` mapping our CSS tokens (no hardcoded colors)
-- Updated `app/sign-in/[[...sign-in]]/page.tsx` — two-panel layout: left panel with logo/tagline/feature list (hidden on small screens), right panel with centered Clerk `<SignIn>`
+- Updated `app/sign-in/[[...sign-in]]/page.tsx` — two-panel layout: left panel with logo/tagline/feature list (responsive), right panel with centered Clerk `<SignIn>`
 - Updated `app/sign-up/[[...sign-up]]/page.tsx` — same two-panel layout with `<SignUp>`
 - Updated `app/page.tsx` — server component using `auth()` from `@clerk/nextjs/server`: authenticated users redirect to `/editor`, unauthenticated redirect to `/sign-in`
 - `UserButton` already present in `editor-navbar.tsx` — no changes needed
+- Created `hooks/use-project-dialog.tsx` — shared hook + context for dialog state, form state, mock data, `toSlug()` utility
+- Created `components/editor/editor-home.tsx` — editor home screen with heading, description, "New Project" button
+- Created `components/editor/create-project-dialog.tsx` — project name input with live slug preview
+- Created `components/editor/rename-project-dialog.tsx` — prefilled name, auto-focus, Enter submits
+- Created `components/editor/delete-project-dialog.tsx` — destructive confirmation, no input
+- Updated `components/editor/project-sidebar.tsx` — project items with rename/delete action menu (owned only), mobile backdrop scrim
+- Updated `app/editor/layout.tsx` — wraps content in `ProjectDialogProvider`, renders all three dialogs
+- Updated `app/editor/page.tsx` — renders `EditorHome` (no longer a placeholder)
+- Created `prisma/models/project.prisma` — `Project` model (ownerId, name, description, status enum, canvasJsonPath, timestamps, indexes on ownerId/createdAt) and `ProjectCollaborator` model (project relation with cascade delete, email, unique constraint, indexes on email/projectId+createdAt)
+- Updated `prisma/schema.prisma` — references project models via `/// <reference path="./models/project.prisma" />`
+- Created `lib/prisma.ts` — cached singleton that branches on `DATABASE_URL`: uses Accelerate (`accelerateUrl`) for `prisma+postgres://`, `@prisma/adapter-pg` (with `connectionString`) otherwise; cached on `globalThis` in development
+- Ran initial migration `20260520121103_init` — creates `Project` and `ProjectCollaborator` tables
+- Created `app/api/projects/route.ts` — `GET` (list owned projects, desc by createdAt), `POST` (create with name defaulting to "Untitled Project", returns 201), `PATCH` (rename with owner check, returns 403 for non-owner), `DELETE` (delete with owner check, returns 403 for non-owner); all routes return 401 for unauthenticated, 400 for missing fields, 404 for not found
+- Rewired `hooks/use-project-dialog.tsx` — removed mock data, replaced with `fetchProjects()` (GET), `apiCreateProject()` (POST), `apiRenameProject()` (PATCH), `apiDeleteProject()` (DELETE); projects fetched on mount via `useEffect`; mutations update local state immediately
+- Updated `components/editor/project-sidebar.tsx` — replaced `mockProjects`/`mockSharedProjects` with `projects`/`sharedProjects` from context, added loading state
+- Updated `app/editor/layout.tsx` — dialog `onSubmit` handlers now call `dialog.createProject`, `dialog.renameProject`, `dialog.deleteProject` (API-backed) instead of `dialog.close`
+- Updated `context/progress-tracker.md` — note about mock data removed
+- Created `app/api/projects/[id]/route.ts` — `PATCH` (rename, path-param ID, owner check, returns 403 for non-owner) and `DELETE` (path-param ID, owner check, returns 403 for non-owner)
+- Updated `app/editor/layout.tsx` — now a server component, fetches owned projects via Prisma; fetches shared projects via `currentUser()` email + `ProjectCollaborator`; passes both serialized lists to `EditorClientLayout`
+- Created `app/editor/editor-client-layout.tsx` — client component extracted from former layout, accepts `initialProjects` and `initialSharedProjects` props
+- Updated `hooks/use-project-dialog.tsx` — accepts `initialProjects` + `initialSharedProjects` arrays to skip client-side fetch for initial load; uses `[id]` path routes for PATCH/DELETE; navigates to `/editor/[id]` on create; uses `useRouter` and `usePathname` from `next/navigation`
+- Updated `components/editor/create-project-dialog.tsx` — preview now shows "Room ID" combining slug + 4-char random suffix instead of "URL slug"
+- Updated `hooks/use-project-dialog.tsx` — `deleteProject` redirects to `/editor` if `pathname` matches the deleted project's workspace, otherwise calls `router.refresh()`
+- Updated `hooks/use-project-dialog.tsx` — `renameProject` calls `router.refresh()` after success per spec
 
 ## In Progress
 
@@ -52,6 +78,8 @@ Update this file whenever the current phase, active feature, or implementation s
 - `proxy.ts` replaces `middleware.ts` (Next.js 16 convention). Uses protected-first strategy: blocks everything except `/`, `/sign-in/*`, `/sign-up/*`.
 - Catch-all routes `[[...sign-in]]` / `[[...sign-up]]` auto-generated by Clerk SDK are used to cover all Clerk auth sub-paths (password reset, etc.).
 - Clerk appearance `variables` use the same hex values from `globals.css` project tokens to avoid hardcoded colors.
+- Project dialogs now backed by API — create, rename, delete hit `/api/projects` endpoints with optimistic local state updates. Rename/delete use `[id]` path parameter routes.
+- `ProjectDialogProvider` context pattern used so editor home (page) and sidebar can both trigger dialogs rendered in the layout.
 
 ## Architecture Decisions
 
@@ -59,6 +87,8 @@ Update this file whenever the current phase, active feature, or implementation s
 - shadcn component tokens (`--color-background`, `--color-foreground`, etc.) reference project semantic tokens for single-source-of-truth
 - Auth route protection via `proxy.ts` (Next.js 16 Proxy convention) instead of `middleware.ts`
 - Clerk `dark` theme from `@clerk/ui/themes` as base appearance, overridden via `variables` using project CSS token values
+- Prisma client singleton branches on `DATABASE_URL` prefix: `prisma+postgres://` uses Accelerate (`accelerateUrl`), otherwise uses `@prisma/adapter-pg` with direct `connectionString`
+- Models split into separate file under `prisma/models/` and referenced via `/// <reference>` directive
 
 ## Session Notes
 

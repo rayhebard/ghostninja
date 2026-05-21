@@ -1,0 +1,38 @@
+The database schema is ready. Build the backend project API routes only.
+
+## Routes
+
+Create REST endpoints for: 
+
+- `GET /api/projects`
+- `POST /api/projects`
+- `PATCH /api/projects`
+- `DELETE /api/projects`
+
+## Rules 
+
+Use the authenticated Clerk user ID as `ownerId`.
+
+When creating:
+
+- default missing project name to `Untitled Project`
+- use the schema's existing ID strategy, do not add sequential IDs
+
+Security:
+
+- unauthenticated requests return `401`
+- only the project owner can rename or DELETE
+- non-owner mutations return `403`
+
+Keep this backend-only. Do not wire the UI yet.
+
+
+## Check When Done
+
+- routes exist for list/create/rename/DELETE
+- owner checks are enforced for rename/DELETE
+- `401` and `403` response are handled correctly
+- `npm run build` passes
+
+
+
