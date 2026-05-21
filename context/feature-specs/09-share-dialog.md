@@ -14,24 +14,24 @@ Collaborators can:
 
 ## Clerk User Data
 
-Collaborators are store by email in the database. 
+Collaborators are stored by email in the database. 
 
 Use Clerk Backend API to enrich collaborator emails with:
 
 - display name
 - avatar image
 
-If a Clerk user is not found for an email. fall back to show the email only.
+If a Clerk user is not found for an email, fall back to showing the email only.
 
 ## Implementation
 
-Add the requires API logic for:
+Add the required API logic for:
 
 - listing collaborators
 - inviting collaborators
 - removing collaborators
 
-Enfore ownership server-side for invite and remove actions.
+Enforce ownership server-side for invite and remove actions.
 
 Do not add a local user table. 
 

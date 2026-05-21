@@ -31,7 +31,11 @@ export async function GET() {
       }))
 
     return NextResponse.json(projects)
-  } catch {
-    return NextResponse.json([])
+  } catch (err) {
+    console.error("Failed to fetch shared projects:", err)
+    return NextResponse.json(
+      { error: "Failed to fetch shared projects" },
+      { status: 500 },
+    )
   }
 }

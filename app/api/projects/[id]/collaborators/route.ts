@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { auth, currentUser, clerkClient } from "@clerk/nextjs/server"
+import { Prisma } from "@/app/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 
 async function getCollaborators(projectId: string) {
@@ -71,8 +72,9 @@ export async function GET(
       (e) => e.id === user.primaryEmailAddressId,
     )?.emailAddress
     if (primaryEmail) {
+      const normalizedEmail = primaryEmail.trim().toLowerCase()
       const collaborator = await prisma.projectCollaborator.findUnique({
-        where: { projectId_email: { projectId: id, email: primaryEmail } },
+        where: { projectId_email: { projectId: id, email: normalizedEmail } },
       })
       hasAccess = !!collaborator
     }
@@ -175,9 +177,23 @@ export async function POST(
     return NextResponse.json({ error: "Already a collaborator" }, { status: 409 })
   }
 
-  const collaborator = await prisma.projectCollaborator.create({
-    data: { projectId: id, email: normalizedEmail },
-  })
+  let collaborator
+  try {
+    collaborator = await prisma.projectCollaborator.create({
+      data: { projectId: id, email: normalizedEmail },
+    })
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "Already a collaborator" },
+        { status: 409 },
+      )
+    }
+    throw error
+  }
 
   try {
     const client = await clerkClient()
@@ -216,11 +232,13 @@ export async function DELETE(
   }
 
   const { searchParams } = new URL(request.url)
-  const email = searchParams.get("email")
+  let email = searchParams.get("email")
 
   if (!email) {
     return NextResponse.json({ error: "Email query parameter is required" }, { status: 400 })
   }
+
+  email = email.trim().toLowerCase()
 
   const collaborator = await prisma.projectCollaborator.findUnique({
     where: { projectId_email: { projectId: id, email } },

@@ -1,4 +1,4 @@
-Build the `editor[roomid]` workspace shell with server-side acess checks. No canvas logic yet.
+Build the `/editor/[roomId]` workspace shell with server-side access checks. No canvas logic yet.
 
 ## Access
 
@@ -6,9 +6,9 @@ Build the `editor[roomid]` workspace shell with server-side acess checks. No can
 
 Before rendering:
 
-- unauthenticated users redirects to `/sing-in`
+- unauthenticated users redirects to `/sign-in`
 - user without project access see `AccessDenied`
-- non-existent project also show `AcessDenied`
+- non-existent project also show `AccessDenied`
 
 Create `components/editor/access-denied.tsx` with:
 
@@ -22,7 +22,7 @@ Create `components/editor/access-denied.tsx` with:
 Create `lib/project-access.ts` with helpers for:
 
 - getting current Clerk identity: `userId` + primary email
-- checking procject acess by owner or collaborator
+- checking project access by owner or collaborator
 
 ## Layout
 
@@ -48,8 +48,8 @@ Do not add real canvas logic, Liveblocks, AI chat, or sharing behavior yet.
 - access helper exists outside the page component
 - `AccessDenied` is used for missing or unauthorized projects 
 - workspace layout renders with current project context
-- no Typescript errors
-- no liniting errors 
+- no TypeScript errors
+- no linting errors 
 
 
 

@@ -92,10 +92,17 @@ export function useProjectDialogState(
   const [name, setName] = useState("")
 
   useEffect(() => {
+    _setLoading(true)
     fetch("/api/projects/shared")
-      .then((res) => res.json())
-      .then((data) => setSharedProjects(data))
-      .catch(() => setSharedProjects([]))
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        setSharedProjects(Array.isArray(data) ? data : [])
+        _setLoading(false)
+      })
+      .catch(() => {
+        setSharedProjects([])
+        _setLoading(false)
+      })
   }, [])
 
   const openCreate = useCallback(() => {

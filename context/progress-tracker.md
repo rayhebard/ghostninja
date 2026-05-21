@@ -4,7 +4,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Editor workspace shell with access control
+- Share dialog wired to real API
 
 ## Current Goal
 
@@ -73,14 +73,6 @@ Update this file whenever the current phase, active feature, or implementation s
 - Updated `components/editor/workspace-navbar.tsx` — added `onShare` prop, wired share button
 - Updated `components/editor/workspace-shell.tsx` — manages share dialog state, renders `ShareDialog`, passes `onShare` to navbar
 - Updated `app/editor/[roomId]/page.tsx` — passes `isOwner` to `WorkspaceShell`
-
-## Current Phase
-
-- Share dialog wired to real API
-
-## Current Goal
-
-- Collaborative canvas (Liveblocks + React Flow)
 
 ## Notes
 
