@@ -1,6 +1,8 @@
 "use client"
 
 import { X, Plus, EllipsisVertical, Pencil, Trash2 } from "lucide-react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
@@ -8,18 +10,21 @@ import { useProjectDialogContext } from "@/hooks/use-project-dialog"
 import { useState, useId, useRef, useCallback, useEffect } from "react"
 
 interface ProjectSidebarProps {
-  isOpen: boolean
   onClose: () => void
 }
 
 function ProjectItem({
+  id,
   name,
   owned,
+  active,
   onRename,
   onDelete,
 }: {
+  id: string
   name: string
   owned: boolean
+  active: boolean
   onRename: () => void
   onDelete: () => void
 }) {
@@ -67,10 +72,19 @@ function ProjectItem({
   }
 
   return (
-    <div className="group flex items-center justify-between px-3 py-2 rounded-lg hover:bg-subtle cursor-pointer">
-      <span className="text-sm text-copy-primary truncate">{name}</span>
+    <div className={cn("group flex items-center justify-between rounded-lg", active && "bg-subtle")}>
+      <Link
+        href={`/editor/${id}`}
+        className={cn(
+          "flex-1 truncate text-sm px-3 py-2 rounded-lg",
+          "text-copy-primary",
+          !active && "hover:bg-subtle",
+        )}
+      >
+        {name}
+      </Link>
       {owned && (
-        <div className="relative">
+        <div className="relative pr-1">
           <button
             ref={triggerRef}
             onClick={(e) => {
@@ -131,21 +145,25 @@ function ProjectItem({
   )
 }
 
-export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
-  const { projects, sharedProjects, loading, openCreate, openRename, openDelete } = useProjectDialogContext()
+export function ProjectSidebar({ onClose }: ProjectSidebarProps) {
+  const { projects, sharedProjects, loading, openCreate, openRename, openDelete, sidebarOpen } = useProjectDialogContext()
+  const pathname = usePathname()
+  const currentRoomId = pathname.startsWith("/editor/")
+    ? pathname.replace("/editor/", "").split("/")[0]
+    : null
 
   return (
     <>
-      {isOpen && (
+      {sidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/40 md:hidden"
           onClick={onClose}
         />
       )}
       <aside
-        aria-hidden={!isOpen}
-        inert={isOpen ? undefined : true}
-        tabIndex={isOpen ? 0 : -1}
+        aria-hidden={!sidebarOpen}
+        inert={sidebarOpen ? undefined : true}
+        tabIndex={sidebarOpen ? 0 : -1}
         className={cn(
           "fixed left-0 top-12 bottom-0 z-40",
           "w-64",
@@ -153,7 +171,7 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
           "flex flex-col",
           "shadow-2xl",
           "transition-transform duration-200 ease-in-out",
-          isOpen
+          sidebarOpen
             ? "translate-x-0 visible pointer-events-auto"
             : "-translate-x-full invisible pointer-events-none"
         )}
@@ -197,8 +215,10 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
                   projects.map((p) => (
                     <ProjectItem
                       key={p.id}
+                      id={p.id}
                       name={p.name}
                       owned={true}
+                      active={p.id === currentRoomId}
                       onRename={() => openRename(p)}
                       onDelete={() => openDelete(p)}
                     />
@@ -217,8 +237,10 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
                   sharedProjects.map((p) => (
                     <ProjectItem
                       key={p.id}
+                      id={p.id}
                       name={p.name}
                       owned={false}
+                      active={p.id === currentRoomId}
                       onRename={() => openRename(p)}
                       onDelete={() => openDelete(p)}
                     />

@@ -4,11 +4,11 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Editor home wired to API (server-side initial load)
+- Editor workspace shell with access control
 
 ## Current Goal
 
-- Individual editor workspace page
+- Collaborative canvas (Liveblocks + React Flow)
 
 ## Completed
 
@@ -58,19 +58,29 @@ Update this file whenever the current phase, active feature, or implementation s
 - Updated `components/editor/create-project-dialog.tsx` — preview now shows "Room ID" combining slug + 4-char random suffix instead of "URL slug"
 - Updated `hooks/use-project-dialog.tsx` — `deleteProject` redirects to `/editor` if `pathname` matches the deleted project's workspace, otherwise calls `router.refresh()`
 - Updated `hooks/use-project-dialog.tsx` — `renameProject` calls `router.refresh()` after success per spec
+- Created `lib/project-access.ts` — `getProjectAccess(roomId)` helper using `auth()` + `currentUser()` + Prisma for owner/collaborator checks
+- Created `components/editor/access-denied.tsx` — centered layout with lock icon, message, and "Back to projects" link
+- Created `components/editor/workspace-navbar.tsx` — workspace top bar with project name, share button (placeholder), and AI sidebar toggle
+- Created `components/editor/workspace-shell.tsx` — full-viewport workspace layout: workspace navbar, dark canvas placeholder, collapsible AI sidebar placeholder
+- Created `app/editor/[roomId]/page.tsx` — server component: redirects unauthenticated to sign-in, shows `AccessDenied` for missing/unauthorized projects, renders `WorkspaceShell` with project context
+- Updated `app/editor/editor-client-layout.tsx` — detects workspace pages via `usePathname()`, skips `EditorNavbar` and removes `pt-12` padding for workspace routes; merges `sidebarOpen`/`toggleSidebar` into dialog context
+- Updated `components/editor/project-sidebar.tsx` — `ProjectItem` uses `Link` to navigate to `/editor/[id]`, highlights active project via `usePathname()`, accepts `id` and `active` props; reads `sidebarOpen` from context instead of props
+- Updated `hooks/use-project-dialog.tsx` — added `sidebarOpen: boolean` and `toggleSidebar: () => void` to context interface
+- Updated `components/editor/editor-navbar.tsx` — reads `sidebarOpen`/`toggleSidebar` from context instead of props
+- Updated `components/editor/workspace-navbar.tsx` — added sidebar toggle button using `PanelLeftOpen`/`PanelLeftClose` from context
+- Created `app/api/projects/[id]/collaborators/route.ts` — `GET` (list enriched collaborators with Clerk avatars/names), `POST` (invite by email, owner-only), `DELETE` (remove by email query param, owner-only); ownership enforced server-side
+- Created `components/editor/share-dialog.tsx` — share dialog with copy-link + "Copied!" feedback, collaborator list with Clerk avatars/names (email fallback), invite input for owners, remove button on hover for owners; collaborators see read-only list
+- Updated `components/editor/workspace-navbar.tsx` — added `onShare` prop, wired share button
+- Updated `components/editor/workspace-shell.tsx` — manages share dialog state, renders `ShareDialog`, passes `onShare` to navbar
+- Updated `app/editor/[roomId]/page.tsx` — passes `isOwner` to `WorkspaceShell`
 
-## In Progress
+## Current Phase
 
-- None yet.
+- Share dialog wired to real API
 
-## Next Up
+## Current Goal
 
-- Project CRUD and routing
 - Collaborative canvas (Liveblocks + React Flow)
-
-## Open Questions
-
-- None yet.
 
 ## Notes
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, createContext, useContext } from "react"
+import { useState, useCallback, useEffect, createContext, useContext } from "react"
 import { useRouter, usePathname } from "next/navigation"
 
 export interface Project {
@@ -25,10 +25,6 @@ export function toSlug(name: string): string {
   return slug || "untitled"
 }
 
-function shortId(): string {
-  return Math.random().toString(36).substring(2, 6)
-}
-
 interface ProjectDialogContextValue {
   projects: Project[]
   sharedProjects: Project[]
@@ -44,6 +40,8 @@ interface ProjectDialogContextValue {
   createProject: () => Promise<void>
   renameProject: () => Promise<void>
   deleteProject: () => Promise<void>
+  sidebarOpen: boolean
+  toggleSidebar: () => void
 }
 
 const ProjectDialogContext = createContext<ProjectDialogContextValue | null>(null)
@@ -83,16 +81,22 @@ async function apiDeleteProject(id: string): Promise<boolean> {
 
 export function useProjectDialogState(
   initialProjects: Project[] = [],
-  initialSharedProjects: Project[] = [],
 ) {
   const router = useRouter()
   const pathname = usePathname()
   const [projects, setProjects] = useState<Project[]>(initialProjects)
-  const [sharedProjects, setSharedProjects] = useState<Project[]>(initialSharedProjects)
-  const [loading, setLoading] = useState(false)
+  const [sharedProjects, setSharedProjects] = useState<Project[]>([])
+  const [loading, _setLoading] = useState(false)
   const [dialog, setDialog] = useState<DialogType>(null)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [name, setName] = useState("")
+
+  useEffect(() => {
+    fetch("/api/projects/shared")
+      .then((res) => res.json())
+      .then((data) => setSharedProjects(data))
+      .catch(() => setSharedProjects([]))
+  }, [])
 
   const openCreate = useCallback(() => {
     setSelectedProject(null)

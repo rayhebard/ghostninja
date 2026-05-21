@@ -4,13 +4,11 @@ import { PanelLeftOpen, PanelLeftClose } from "lucide-react"
 import { UserButton } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useProjectDialogContext } from "@/hooks/use-project-dialog"
 
-interface EditorNavbarProps {
-  isSidebarOpen: boolean
-  onToggleSidebar: () => void
-}
+export function EditorNavbar() {
+  const { sidebarOpen, toggleSidebar } = useProjectDialogContext()
 
-export function EditorNavbar({ isSidebarOpen, onToggleSidebar }: EditorNavbarProps) {
   return (
     <header
       className={cn(
@@ -25,10 +23,10 @@ export function EditorNavbar({ isSidebarOpen, onToggleSidebar }: EditorNavbarPro
         <Button
           variant="ghost"
           size="icon"
-          onClick={onToggleSidebar}
-          aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+          onClick={toggleSidebar}
+          aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
         >
-          {isSidebarOpen ? (
+          {sidebarOpen ? (
             <PanelLeftClose className="h-4 w-4" />
           ) : (
             <PanelLeftOpen className="h-4 w-4" />

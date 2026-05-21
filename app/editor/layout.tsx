@@ -1,4 +1,4 @@
-import { auth, currentUser } from "@clerk/nextjs/server"
+import { auth } from "@clerk/nextjs/server"
 import { prisma } from "@/lib/prisma"
 import { EditorClientLayout } from "./editor-client-layout"
 import type { Project } from "@/hooks/use-project-dialog"
@@ -15,31 +15,6 @@ async function getProjects(userId: string): Promise<Project[]> {
   }))
 }
 
-async function getSharedProjects(userId: string): Promise<Project[]> {
-  try {
-    const user = await currentUser()
-    const primaryEmail = user?.emailAddresses.find(
-      (e) => e.id === user.primaryEmailAddressId,
-    )?.emailAddress
-    if (!primaryEmail) return []
-
-    const records = await prisma.projectCollaborator.findMany({
-      where: { email: primaryEmail },
-      include: { project: true },
-    })
-
-    return records
-      .filter((r) => r.project.ownerId !== userId)
-      .map((r) => ({
-        ...r.project,
-        createdAt: r.project.createdAt.toISOString(),
-        updatedAt: r.project.updatedAt.toISOString(),
-      }))
-  } catch {
-    return []
-  }
-}
-
 export default async function EditorLayout({
   children,
 }: {
@@ -47,12 +22,10 @@ export default async function EditorLayout({
 }) {
   const { userId } = await auth()
   const projects = userId ? await getProjects(userId) : []
-  const sharedProjects = userId ? await getSharedProjects(userId) : []
 
   return (
     <EditorClientLayout
       initialProjects={projects}
-      initialSharedProjects={sharedProjects}
     >
       {children}
     </EditorClientLayout>

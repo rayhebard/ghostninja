@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { usePathname } from "next/navigation"
 import { EditorNavbar } from "@/components/editor/editor-navbar"
 import { ProjectSidebar } from "@/components/editor/project-sidebar"
 import { CreateProjectDialog } from "@/components/editor/create-project-dialog"
@@ -15,25 +16,24 @@ import type { Project } from "@/hooks/use-project-dialog"
 export function EditorClientLayout({
   children,
   initialProjects,
-  initialSharedProjects,
 }: {
   children: React.ReactNode
   initialProjects: Project[]
-  initialSharedProjects: Project[]
 }) {
+  const pathname = usePathname()
+  const isWorkspace = pathname !== "/editor" && pathname.startsWith("/editor/")
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const dialog = useProjectDialogState(initialProjects, initialSharedProjects)
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev)
+  const dialog = useProjectDialogState(initialProjects)
 
   return (
-    <ProjectDialogProvider value={dialog}>
+    <ProjectDialogProvider value={{ ...dialog, sidebarOpen: isSidebarOpen, toggleSidebar }}>
       <div className="flex-1 flex flex-col">
-        <EditorNavbar
-          isSidebarOpen={isSidebarOpen}
-          onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
-        />
-        <div className="flex flex-1 pt-12">
+        {!isWorkspace && (
+          <EditorNavbar />
+        )}
+        <div className={`flex flex-1 ${isWorkspace ? "" : "pt-12"}`}>
           <ProjectSidebar
-            isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
           />
           <main className="flex-1">{children}</main>

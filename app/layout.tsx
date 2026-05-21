@@ -32,6 +32,7 @@ export default function RootLayout({
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
       signInFallbackRedirectUrl="/editor"
+      signUpFallbackRedirectUrl="/editor"
       afterSignOutUrl="/sign-in"
       appearance={{
         theme: dark,
