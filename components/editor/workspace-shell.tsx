@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { WorkspaceNavbar } from "./workspace-navbar"
 import { ShareDialog } from "./share-dialog"
+import { Canvas } from "./canvas"
 
 interface WorkspaceShellProps {
   projectName: string
@@ -15,8 +16,8 @@ export function WorkspaceShell({
   projectId,
   isOwner,
 }: WorkspaceShellProps) {
-  const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false)
-  const [shareOpen, setShareOpen] = useState(false)
+  const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(true)
+  const [shareOpen, setShareOpen] = useState(true)
 
   return (
     <div className="h-full flex flex-col">
@@ -34,15 +35,11 @@ export function WorkspaceShell({
         isOwner={isOwner}
       />
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Canvas area */}
-        <div className="flex-1 bg-base flex items-center justify-center">
-          <p className="text-sm text-copy-faint">Canvas area</p>
-        </div>
+      <div className="relative flex flex-1 overflow-hidden">
+        <Canvas roomId={projectId} />
 
-        {/* AI sidebar placeholder */}
         {isAiSidebarOpen && (
-          <aside className="w-72 border-l border-border-default bg-surface flex items-center justify-center">
+          <aside className="absolute right-0 top-0 bottom-0 w-72 border-l border-border-default bg-surface z-30 flex items-center justify-center">
             <p className="text-sm text-copy-faint">AI chat</p>
           </aside>
         )}

@@ -4,7 +4,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Share dialog wired to real API
+- Canvas: shape panel with drag-and-drop node creation
 
 ## Current Goal
 
@@ -73,6 +73,19 @@ Update this file whenever the current phase, active feature, or implementation s
 - Updated `components/editor/workspace-navbar.tsx` — added `onShare` prop, wired share button
 - Updated `components/editor/workspace-shell.tsx` — manages share dialog state, renders `ShareDialog`, passes `onShare` to navbar
 - Updated `app/editor/[roomId]/page.tsx` — passes `isOwner` to `WorkspaceShell`
+- Updated `liveblocks.config.ts` — defines `Presence` (cursor, isThinking) and `UserMeta` (id, name, avatar, color) types
+- Created `lib/liveblocks.ts` — Liveblocks REST API helpers (`ensureRoomExists`, `authorizeUser`) using secret key; deterministic `getUserColor()` helper with 20-color palette
+- Created `app/api/liveblocks-auth/route.ts` — `POST` handler that authenticates via Clerk, verifies project access via `getProjectAccess()`, ensures Liveblocks room exists (idempotent), and returns a signed token with user metadata (name, avatar, cursor color); returns 401/403/400/500 as appropriate
+- Added `LIVEBLOCKS_SECRET_KEY` to `.env.local`
+- Created `types/canvas.ts` — shared canvas types: `CanvasNodeData` (label, color, shape), `CanvasNode` (canvasNode type), `CanvasEdge` (canvasEdge type) with index signature for Record compatibility
+- Created `components/editor/canvas.tsx` — client canvas wrapper: `LiveblocksProvider` (authEndpoint), `RoomProvider` (room ID, initial presence with cursor:null), `ClientSideSuspense` with loading state, React error boundary for connection failures; uses `useLiveblocksFlow` with suspense, renders `ReactFlow` with `isValidConnection` (loose), `fitView`, dot-pattern `Background`, and `MiniMap`
+- Updated `components/editor/workspace-shell.tsx` — replaced canvas placeholder with `<Canvas roomId={projectId} />`
+- Updated `types/canvas.ts` — exported `CanvasShape` union (rectangle, diamond, circle, pill, cylinder, hexagon) for use in shape panel
+- Created `components/editor/shape-panel.tsx` — floating pill-shaped toolbar at canvas bottom-center with 6 draggable shape icon buttons (Square/Diamond/Circle/Pill/Cylinder/Hexagon from lucide-react); drag payload set as `application/x-canvas-shape` custom MIME with shape name, width, and height; exports `getShapePayload()` helper for drop handling
+- Updated `components/editor/canvas.tsx` — added `CanvasNode` component (bordered rectangle with centered label, target/source Handles), registered `nodeTypes` on ReactFlow; added `onDrop` handler that reads shape payload, converts screen coords via `screenToFlowPosition`, creates node with `shapeName-timestamp-counter` ID, empty label, brand color, and default dimensions; added `onDragOver` handler; renders `<ShapePanel />` overlaid on the canvas
+- Replaced clip-path based diamond, hexagon, and cylinder node renderers with inline SVG shapes (diamond/hexagon use `<polygon>`, cylinder uses `<rect>` + `<ellipse>` + `<line>`); rectangle, circle, and pill remain CSS-based
+- Added selected state to all node components — border/stroke switches to `var(--color-brand)` when `selected` prop is true (subtle `var(--color-copy-secondary)` at rest)
+- Added drag ghost preview to `shape-panel.tsx` — `createDragGhost()` generates a ghost element for each shape type (CSS inline styles for rectangle/circle/pill, inline SVG for diamond/hexagon/cylinder), registered via `setDragImage` with center offset, cleaned up on `requestAnimationFrame`
 
 ## Notes
 
