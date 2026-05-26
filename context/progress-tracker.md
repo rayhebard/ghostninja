@@ -4,11 +4,11 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Editor home wired to API (server-side initial load)
+- Canvas: node resizing + inline label editing (spec 14 complete)
 
 ## Current Goal
 
-- Individual editor workspace page
+- Collaborative canvas (Liveblocks + React Flow)
 
 ## Completed
 
@@ -58,19 +58,48 @@ Update this file whenever the current phase, active feature, or implementation s
 - Updated `components/editor/create-project-dialog.tsx` — preview now shows "Room ID" combining slug + 4-char random suffix instead of "URL slug"
 - Updated `hooks/use-project-dialog.tsx` — `deleteProject` redirects to `/editor` if `pathname` matches the deleted project's workspace, otherwise calls `router.refresh()`
 - Updated `hooks/use-project-dialog.tsx` — `renameProject` calls `router.refresh()` after success per spec
-
-## In Progress
-
-- None yet.
-
-## Next Up
-
-- Project CRUD and routing
-- Collaborative canvas (Liveblocks + React Flow)
-
-## Open Questions
-
-- None yet.
+- Created `lib/project-access.ts` — `getProjectAccess(roomId)` helper using `auth()` + `currentUser()` + Prisma for owner/collaborator checks
+- Created `components/editor/access-denied.tsx` — centered layout with lock icon, message, and "Back to projects" link
+- Created `components/editor/workspace-navbar.tsx` — workspace top bar with project name, share button (placeholder), and AI sidebar toggle
+- Created `components/editor/workspace-shell.tsx` — full-viewport workspace layout: workspace navbar, dark canvas placeholder, collapsible AI sidebar placeholder
+- Created `app/editor/[roomId]/page.tsx` — server component: redirects unauthenticated to sign-in, shows `AccessDenied` for missing/unauthorized projects, renders `WorkspaceShell` with project context
+- Updated `app/editor/editor-client-layout.tsx` — detects workspace pages via `usePathname()`, skips `EditorNavbar` and removes `pt-12` padding for workspace routes; merges `sidebarOpen`/`toggleSidebar` into dialog context
+- Updated `components/editor/project-sidebar.tsx` — `ProjectItem` uses `Link` to navigate to `/editor/[id]`, highlights active project via `usePathname()`, accepts `id` and `active` props; reads `sidebarOpen` from context instead of props
+- Updated `hooks/use-project-dialog.tsx` — added `sidebarOpen: boolean` and `toggleSidebar: () => void` to context interface
+- Updated `components/editor/editor-navbar.tsx` — reads `sidebarOpen`/`toggleSidebar` from context instead of props
+- Updated `components/editor/workspace-navbar.tsx` — added sidebar toggle button using `PanelLeftOpen`/`PanelLeftClose` from context
+- Created `app/api/projects/[id]/collaborators/route.ts` — `GET` (list enriched collaborators with Clerk avatars/names), `POST` (invite by email, owner-only), `DELETE` (remove by email query param, owner-only); ownership enforced server-side
+- Created `components/editor/share-dialog.tsx` — share dialog with copy-link + "Copied!" feedback, collaborator list with Clerk avatars/names (email fallback), invite input for owners, remove button on hover for owners; collaborators see read-only list
+- Updated `components/editor/workspace-navbar.tsx` — added `onShare` prop, wired share button
+- Updated `components/editor/workspace-shell.tsx` — manages share dialog state, renders `ShareDialog`, passes `onShare` to navbar
+- Updated `app/editor/[roomId]/page.tsx` — passes `isOwner` to `WorkspaceShell`
+- Updated `liveblocks.config.ts` — defines `Presence` (cursor, isThinking) and `UserMeta` (id, name, avatar, color) types
+- Created `lib/liveblocks.ts` — Liveblocks REST API helpers (`ensureRoomExists`, `authorizeUser`) using secret key; deterministic `getUserColor()` helper with 20-color palette
+- Created `app/api/liveblocks-auth/route.ts` — `POST` handler that authenticates via Clerk, verifies project access via `getProjectAccess()`, ensures Liveblocks room exists (idempotent), and returns a signed token with user metadata (name, avatar, cursor color); returns 401/403/400/500 as appropriate
+- Added `LIVEBLOCKS_SECRET_KEY` to `.env.local`
+- Created `types/canvas.ts` — shared canvas types: `CanvasNodeData` (label, color, shape), `CanvasNode` (canvasNode type), `CanvasEdge` (canvasEdge type) with index signature for Record compatibility
+- Created `components/editor/canvas.tsx` — client canvas wrapper: `LiveblocksProvider` (authEndpoint), `RoomProvider` (room ID, initial presence with cursor:null), `ClientSideSuspense` with loading state, React error boundary for connection failures; uses `useLiveblocksFlow` with suspense, renders `ReactFlow` with `isValidConnection` (loose), `fitView`, dot-pattern `Background`, and `MiniMap`
+- Updated `components/editor/workspace-shell.tsx` — replaced canvas placeholder with `<Canvas roomId={projectId} />`
+- Updated `types/canvas.ts` — exported `CanvasShape` union (rectangle, diamond, circle, pill, cylinder, hexagon) for use in shape panel
+- Created `components/editor/shape-panel.tsx` — floating pill-shaped toolbar at canvas bottom-center with 6 draggable shape icon buttons (Square/Diamond/Circle/Pill/Cylinder/Hexagon from lucide-react); drag payload set as `application/x-canvas-shape` custom MIME with shape name, width, and height; exports `getShapePayload()` helper for drop handling
+- Updated `components/editor/canvas.tsx` — added `CanvasNode` component (bordered rectangle with centered label, target/source Handles), registered `nodeTypes` on ReactFlow; added `onDrop` handler that reads shape payload, converts screen coords via `screenToFlowPosition`, creates node with `shapeName-timestamp-counter` ID, empty label, brand color, and default dimensions; added `onDragOver` handler; renders `<ShapePanel />` overlaid on the canvas
+- Replaced clip-path based diamond, hexagon, and cylinder node renderers with inline SVG shapes (diamond/hexagon use `<polygon>`, cylinder uses `<rect>` + `<ellipse>` + `<line>`); rectangle, circle, and pill remain CSS-based
+- Added selected state to all node components — border/stroke switches to `var(--color-brand)` when `selected` prop is true (subtle `var(--color-copy-secondary)` at rest)
+- Added drag ghost preview to `shape-panel.tsx` — `createDragGhost()` generates a ghost element for each shape type (CSS inline styles for rectangle/circle/pill, inline SVG for diamond/hexagon/cylinder), registered via `setDragImage` with center offset, cleaned up on `requestAnimationFrame`
+- Fixed node connection bug — three issues prevented edges from being created between nodes:
+  1. `liveblocks.config.ts` had `Storage: {}` — `useLiveblocksFlow` stores flow data under `"flow"` but the type declared no storage keys. Added `import { LiveblocksFlow } from "@liveblocks/react-flow"` and typed `Storage: { flow: LiveblocksFlow }`.
+  2. `RoomProvider` lacked `initialStorage` prop (now required by Liveblocks types when Storage is non-empty). Added `initialStorage` with empty `LiveObject`/`LiveMap` for the flow key.
+  3. SVG overlays in DiamondNode, CylinderNode, HexagonNode blocked pointer events on Handle components — added `pointerEvents: "none"` to each SVG.
+  4. Missing `@liveblocks/react-flow/styles.css` import and `<Cursors />` component added to canvas.tsx per Liveblocks React Flow setup guide.
+- Added resizing to all canvas nodes — `<NodeResizer>` from `@xyflow/react` renders subtle `var(--color-copy-muted)` resize handles on selected nodes (all six shapes), with `minWidth={60}`, `minHeight={40}`, and `lineClassName="!border-copy-muted"`.
+  - Added `position: relative` to RectangleNode, CircleNode, PillNode for correct handle positioning
+  - Dimension changes flow through React Flow's controlled state → `onNodesChange` → Liveblocks storage
+- Added inline label editing via `EditableLabel` component:
+  - `<textarea>` positioned `!absolute !inset-0` over the label area to avoid layout shifts
+  - double-click label to edit; placeholder "Label" in `text-copy-faint` when empty
+  - Escape cancels; blur saves
+  - `nodrag nowheel` on textarea prevents canvas drag/pan interference
+  - `NodeEditContext` provides `updateNodeLabel(id, label)` from `FlowCanvas` — uses `reactFlow.getNode()` + `onNodesChange([{ type: "replace", ... }])` so all label changes sync to Liveblocks through the controlled flow
 
 ## Notes
 

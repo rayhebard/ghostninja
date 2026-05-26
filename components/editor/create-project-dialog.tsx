@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useMemo } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -27,9 +27,9 @@ export function CreateProjectDialog({
   onNameChange,
   onSubmit,
 }: CreateProjectDialogProps) {
+  const [suffix] = useState(() => Math.random().toString(36).substring(2, 6))
   const inputRef = useRef<HTMLInputElement>(null)
   const slug = toSlug(name)
-  const suffix = useMemo(() => Math.random().toString(36).substring(2, 6), [open])
   const roomId = slug ? `${slug}-${suffix}` : ""
 
   useEffect(() => {
