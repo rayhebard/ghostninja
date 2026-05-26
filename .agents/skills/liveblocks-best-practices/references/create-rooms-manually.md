@@ -17,7 +17,7 @@ const liveblocks = new Liveblocks({
   secret: process.env.LIVEBLOCKS_SECRET_KEY!,
 });
 
-export function fetchRoom(roomId: string) {
+export async function fetchRoom(roomId: string) {
   let room;
 
   try {
@@ -44,20 +44,12 @@ export function fetchRoom(roomId: string) {
       // Optional, create it on a specific organization
       // organizationId: "acme-corp",
     });
-  } catch (error) {
-    if (error instanceof LiveblocksError) {
-      // Handle specific LiveblocksError cases
-      console.error(
-        `Error getting or creating room: ${error.status} - ${error.message}`
-      );
-      switch (
-        error.status
-        // Specific cases based on status codes
-      ) {
-      }
+  } catch (error: unknown) {
+    const err = error as { status?: number; message?: string };
+    if (err.status) {
+      console.error(`Error getting or creating room: ${err.status} - ${err.message}`);
     } else {
-      // Handle general errors
-      console.error(`Unexpected error: ${error.message}`);
+      console.error(`Unexpected error: ${err.message}`);
     }
     return null;
   }

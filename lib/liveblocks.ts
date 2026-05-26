@@ -23,24 +23,36 @@ export function getUserColor(userId: string): string {
 }
 
 export async function ensureRoomExists(roomId: string): Promise<void> {
-  const res = await fetch(
-    `${LIVEBLOCKS_API}/rooms?idempotent=true`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${secret()}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        id: roomId,
-        defaultAccesses: ["room:write"],
-      }),
-    },
-  );
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Failed to create Liveblocks room: ${res.status} ${body}`);
+  try {
+    const res = await fetch(
+      `${LIVEBLOCKS_API}/rooms?idempotent=true`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secret()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: roomId,
+        }),
+        signal: controller.signal,
+      },
+    );
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Failed to create Liveblocks room: ${res.status} ${body}`);
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Timeout creating Liveblocks room for "${roomId}" at ${LIVEBLOCKS_API}`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -49,26 +61,39 @@ export async function authorizeUser(params: {
   userInfo: { name: string; avatar: string; color: string };
   roomId: string;
 }): Promise<string> {
-  const res = await fetch(`${LIVEBLOCKS_API}/authorize-user`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secret()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      userId: params.userId,
-      userInfo: params.userInfo,
-      permissions: {
-        [params.roomId]: ["room:write"],
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const res = await fetch(`${LIVEBLOCKS_API}/authorize-user`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${secret()}`,
+        "Content-Type": "application/json",
       },
-    }),
-  });
+      body: JSON.stringify({
+        userId: params.userId,
+        userInfo: params.userInfo,
+        permissions: {
+          [params.roomId]: ["room:write"],
+        },
+      }),
+      signal: controller.signal,
+    });
 
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Liveblocks authorize failed: ${res.status} ${body}`);
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Liveblocks authorize failed: ${res.status} ${body}`);
+    }
+
+    const data = await res.json() as { token: string };
+    return data.token;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Timeout authorizing user "${params.userId}" for room "${params.roomId}" at ${LIVEBLOCKS_API}`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const data = await res.json() as { token: string };
-  return data.token;
 }

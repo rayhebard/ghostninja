@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { Square, Diamond, Circle, Pill, Cylinder, Hexagon, type LucideIcon } from "lucide-react"
 import { Panel } from "@xyflow/react"

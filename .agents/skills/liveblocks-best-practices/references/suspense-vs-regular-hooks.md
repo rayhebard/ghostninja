@@ -28,9 +28,11 @@ below will only render once their hook contents have been loaded.
 import { ClientSideSuspense, useStorage } from "@liveblocks/react/suspense";
 
 function App() {
-  <ClientSideSuspense fallback={<div>Loading…</div>}>
-    <Component />
-  </ClientSideSuspense>;
+  return (
+    <ClientSideSuspense fallback={<div>Loading…</div>}>
+      <Component />
+    </ClientSideSuspense>
+  );
 }
 
 function Component() {
@@ -159,23 +161,23 @@ function Page() {
         <header>My title</header>
 
         <main>
-          // +++
+          {/* +++ */}
           <ErrorBoundary fallback={<div>Canvas error</div>}>
             <ClientSideSuspense fallback={<div>Loading…</div>}>
               <Canvas />
             </ClientSideSuspense>
           </ErrorBoundary>
-          // +++
+          {/* +++ */}
         </main>
 
         <aside>
-          // +++
+          {/* +++ */}
           <ErrorBoundary fallback={<div>Live avatars error</div>}>
             <ClientSideSuspense fallback={<div>Loading…</div>}>
               <LiveAvatars />
             </ClientSideSuspense>
           </ErrorBoundary>
-          // +++
+          {/* +++ */}
         </aside>
       </RoomProvider>
     </LiveblocksProvider>

@@ -5,7 +5,7 @@ Add resizing and inline label editing to canvas nodes.
 1. Add resizing.
   - selected nodes should show resize handles
   - prevent nodes from being resized below a minimum size
-  - keep resize handles sublte and consistentwith the dark canvas
+  - keep resize handles subtle and consistent with the dark canvas
 
 
 2. Add inline lable editing.

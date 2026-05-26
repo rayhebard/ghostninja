@@ -74,7 +74,13 @@ function EditableLabel({ id, label, className }: { id: string; label: string; cl
       <textarea
         ref={textareaRef}
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => {
+          const v = e.target.value
+          setValue(v)
+          if (v !== label) {
+            updateNodeLabel(id, v)
+          }
+        }}
         onBlur={save}
         onKeyDown={handleKeyDown}
         rows={1}
