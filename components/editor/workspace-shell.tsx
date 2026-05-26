@@ -17,7 +17,7 @@ export function WorkspaceShell({
   isOwner,
 }: WorkspaceShellProps) {
   const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(true)
-  const [shareOpen, setShareOpen] = useState(true)
+  const [shareOpen, setShareOpen] = useState(false)
 
   return (
     <div className="h-full flex flex-col">

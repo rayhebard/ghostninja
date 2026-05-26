@@ -1,3 +1,5 @@
+import type { LiveblocksFlow } from "@liveblocks/react-flow"
+
 declare global {
   interface Liveblocks {
     Presence: {
@@ -5,7 +7,9 @@ declare global {
       isThinking: boolean;
     };
 
-    Storage: {};
+    Storage: {
+      flow: LiveblocksFlow;
+    };
 
     UserMeta: {
       id: string;

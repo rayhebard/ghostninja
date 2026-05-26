@@ -4,7 +4,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Canvas: shape panel with drag-and-drop node creation
+- Canvas: node resizing + inline label editing (spec 14 complete)
 
 ## Current Goal
 
@@ -86,6 +86,20 @@ Update this file whenever the current phase, active feature, or implementation s
 - Replaced clip-path based diamond, hexagon, and cylinder node renderers with inline SVG shapes (diamond/hexagon use `<polygon>`, cylinder uses `<rect>` + `<ellipse>` + `<line>`); rectangle, circle, and pill remain CSS-based
 - Added selected state to all node components — border/stroke switches to `var(--color-brand)` when `selected` prop is true (subtle `var(--color-copy-secondary)` at rest)
 - Added drag ghost preview to `shape-panel.tsx` — `createDragGhost()` generates a ghost element for each shape type (CSS inline styles for rectangle/circle/pill, inline SVG for diamond/hexagon/cylinder), registered via `setDragImage` with center offset, cleaned up on `requestAnimationFrame`
+- Fixed node connection bug — three issues prevented edges from being created between nodes:
+  1. `liveblocks.config.ts` had `Storage: {}` — `useLiveblocksFlow` stores flow data under `"flow"` but the type declared no storage keys. Added `import { LiveblocksFlow } from "@liveblocks/react-flow"` and typed `Storage: { flow: LiveblocksFlow }`.
+  2. `RoomProvider` lacked `initialStorage` prop (now required by Liveblocks types when Storage is non-empty). Added `initialStorage` with empty `LiveObject`/`LiveMap` for the flow key.
+  3. SVG overlays in DiamondNode, CylinderNode, HexagonNode blocked pointer events on Handle components — added `pointerEvents: "none"` to each SVG.
+  4. Missing `@liveblocks/react-flow/styles.css` import and `<Cursors />` component added to canvas.tsx per Liveblocks React Flow setup guide.
+- Added resizing to all canvas nodes — `<NodeResizer>` from `@xyflow/react` renders subtle `var(--color-copy-muted)` resize handles on selected nodes (all six shapes), with `minWidth={60}`, `minHeight={40}`, and `lineClassName="!border-copy-muted"`.
+  - Added `position: relative` to RectangleNode, CircleNode, PillNode for correct handle positioning
+  - Dimension changes flow through React Flow's controlled state → `onNodesChange` → Liveblocks storage
+- Added inline label editing via `EditableLabel` component:
+  - `<textarea>` positioned `!absolute !inset-0` over the label area to avoid layout shifts
+  - double-click label to edit; placeholder "Label" in `text-copy-faint` when empty
+  - Escape cancels; blur saves
+  - `nodrag nowheel` on textarea prevents canvas drag/pan interference
+  - `NodeEditContext` provides `updateNodeLabel(id, label)` from `FlowCanvas` — uses `reactFlow.getNode()` + `onNodesChange([{ type: "replace", ... }])` so all label changes sync to Liveblocks through the controlled flow
 
 ## Notes
 

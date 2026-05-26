@@ -1,12 +1,18 @@
 "use client"
 
-import { Component, type ReactNode, useCallback, useRef } from "react"
+import { Component, type ReactNode, useCallback, useRef, useState, useEffect, createContext, useContext } from "react"
+import { LiveObject, LiveMap } from "@liveblocks/core"
 import { LiveblocksProvider, RoomProvider, ClientSideSuspense } from "@liveblocks/react"
-import { useLiveblocksFlow } from "@liveblocks/react-flow"
-import { ReactFlow, ReactFlowProvider, Background, MiniMap, BackgroundVariant, useReactFlow, Handle, Position, type Node } from "@xyflow/react"
+import { useLiveblocksFlow, Cursors } from "@liveblocks/react-flow"
+import "@liveblocks/react-flow/styles.css"
+import { ReactFlow, ReactFlowProvider, Background, MiniMap, BackgroundVariant, useReactFlow, Handle, Position, NodeResizer, type Node } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { ShapePanel, getShapePayload } from "./shape-panel"
 import type { CanvasNodeData } from "@/types/canvas"
+
+const NodeEditContext = createContext<{
+  updateNodeLabel: (id: string, label: string) => void
+}>({ updateNodeLabel: () => {} })
 
 class ErrorBoundary extends Component<
   { fallback: ReactNode; children: ReactNode },
@@ -24,60 +30,127 @@ class ErrorBoundary extends Component<
   }
 }
 
-type NodeComponentProps = { data: CanvasNodeData; selected?: boolean }
+type NodeComponentProps = { id: string; data: CanvasNodeData; selected?: boolean }
 
-function RectangleNode({ data, selected }: NodeComponentProps) {
+function EditableLabel({ id, label, className }: { id: string; label: string; className?: string }) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(label)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const labelRef = useRef<HTMLSpanElement>(null)
+  const { updateNodeLabel } = useContext(NodeEditContext)
+
+  useEffect(() => {
+    if (editing && textareaRef.current) {
+      textareaRef.current.focus()
+      textareaRef.current.select()
+    }
+  }, [editing])
+
+  const save = useCallback(() => {
+    if (value !== label) {
+      updateNodeLabel(id, value)
+    }
+    setEditing(false)
+  }, [id, value, label, updateNodeLabel])
+
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditing(true)
+    setValue(label)
+  }, [label])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setValue(label)
+        setEditing(false)
+      }
+    },
+    [label],
+  )
+
+  if (editing) {
+    return (
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={save}
+        onKeyDown={handleKeyDown}
+        rows={1}
+        className="nodrag nowheel !absolute !inset-0 resize-none bg-transparent text-copy-primary text-sm text-center outline-none border-0 overflow-hidden leading-tight w-full h-full px-2 py-1"
+      />
+    )
+  }
+
   return (
-    <div className="h-full border-2 rounded-md bg-surface flex items-center justify-center px-3"
+    <span
+      ref={labelRef}
+      onDoubleClick={handleDoubleClick}
+      className={`min-w-[3rem] min-h-[1.5rem] inline-flex items-center justify-center cursor-default ${className ?? ""}`}
+    >
+      {label || <span className="text-copy-faint select-none">Label</span>}
+    </span>
+  )
+}
+
+function RectangleNode({ id, data, selected }: NodeComponentProps) {
+  return (
+    <div className="h-full relative border-2 rounded-md bg-surface flex items-center justify-center px-3"
       style={{ borderColor: selected ? "var(--color-brand)" : "var(--color-copy-secondary)" }}>
+      <NodeResizer isVisible={selected} minWidth={60} minHeight={40} color="var(--color-copy-muted)" lineClassName="!border-copy-muted" />
       <Handle type="target" position={Position.Top} />
-      <span className="text-copy-primary text-sm text-center">{data.label}</span>
+      <EditableLabel id={id} label={data.label} className="text-copy-primary text-sm text-center" />
       <Handle type="source" position={Position.Bottom} />
     </div>
   )
 }
 
-function DiamondNode({ data, selected }: NodeComponentProps) {
+function DiamondNode({ id, data, selected }: NodeComponentProps) {
   const stroke = selected ? "var(--color-brand)" : "var(--color-copy-secondary)"
   return (
     <div className="h-full relative flex items-center justify-center">
-      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <NodeResizer isVisible={selected} minWidth={60} minHeight={40} color="var(--color-copy-muted)" lineClassName="!border-copy-muted" />
+      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ pointerEvents: "none" }}>
         <polygon points="50,5 95,50 50,95 5,50" fill="var(--color-surface)" stroke={stroke} strokeWidth="2" />
       </svg>
       <Handle type="target" position={Position.Top} />
-      <span className="relative z-10 text-copy-primary text-sm text-center px-2">{data.label}</span>
+      <EditableLabel id={id} label={data.label} className="relative z-10 text-copy-primary text-sm text-center px-2" />
       <Handle type="source" position={Position.Bottom} />
     </div>
   )
 }
 
-function CircleNode({ data, selected }: NodeComponentProps) {
+function CircleNode({ id, data, selected }: NodeComponentProps) {
   return (
-    <div className="h-full rounded-full bg-surface border-2 flex items-center justify-center px-3"
+    <div className="h-full relative rounded-full bg-surface border-2 flex items-center justify-center px-3"
       style={{ borderColor: selected ? "var(--color-brand)" : "var(--color-copy-secondary)" }}>
+      <NodeResizer isVisible={selected} minWidth={60} minHeight={40} color="var(--color-copy-muted)" lineClassName="!border-copy-muted" />
       <Handle type="target" position={Position.Top} />
-      <span className="text-copy-primary text-sm text-center">{data.label}</span>
+      <EditableLabel id={id} label={data.label} className="text-copy-primary text-sm text-center" />
       <Handle type="source" position={Position.Bottom} />
     </div>
   )
 }
 
-function PillNode({ data, selected }: NodeComponentProps) {
+function PillNode({ id, data, selected }: NodeComponentProps) {
   return (
-    <div className="h-full rounded-full bg-surface border-2 flex items-center justify-center px-5"
+    <div className="h-full relative rounded-full bg-surface border-2 flex items-center justify-center px-5"
       style={{ borderColor: selected ? "var(--color-brand)" : "var(--color-copy-secondary)" }}>
+      <NodeResizer isVisible={selected} minWidth={60} minHeight={40} color="var(--color-copy-muted)" lineClassName="!border-copy-muted" />
       <Handle type="target" position={Position.Top} />
-      <span className="text-copy-primary text-sm text-center">{data.label}</span>
+      <EditableLabel id={id} label={data.label} className="text-copy-primary text-sm text-center" />
       <Handle type="source" position={Position.Bottom} />
     </div>
   )
 }
 
-function CylinderNode({ data, selected }: NodeComponentProps) {
+function CylinderNode({ id, data, selected }: NodeComponentProps) {
   const stroke = selected ? "var(--color-brand)" : "var(--color-copy-secondary)"
   return (
     <div className="h-full relative flex items-center justify-center">
-      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <NodeResizer isVisible={selected} minWidth={60} minHeight={40} color="var(--color-copy-muted)" lineClassName="!border-copy-muted" />
+      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ pointerEvents: "none" }}>
         <rect x="10" y="15" width="80" height="70" fill="var(--color-surface)" />
         <ellipse cx="50" cy="85" rx="40" ry="10" fill="var(--color-surface)" stroke={stroke} strokeWidth="2" />
         <ellipse cx="50" cy="15" rx="40" ry="10" fill="var(--color-surface)" stroke={stroke} strokeWidth="2" />
@@ -85,40 +158,41 @@ function CylinderNode({ data, selected }: NodeComponentProps) {
         <line x1="90" y1="15" x2="90" y2="85" stroke={stroke} strokeWidth="2" />
       </svg>
       <Handle type="target" position={Position.Top} />
-      <span className="relative z-10 text-copy-primary text-sm text-center px-2">{data.label}</span>
+      <EditableLabel id={id} label={data.label} className="relative z-10 text-copy-primary text-sm text-center px-2" />
       <Handle type="source" position={Position.Bottom} />
     </div>
   )
 }
 
-function HexagonNode({ data, selected }: NodeComponentProps) {
+function HexagonNode({ id, data, selected }: NodeComponentProps) {
   const stroke = selected ? "var(--color-brand)" : "var(--color-copy-secondary)"
   return (
     <div className="h-full relative flex items-center justify-center">
-      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <NodeResizer isVisible={selected} minWidth={60} minHeight={40} color="var(--color-copy-muted)" lineClassName="!border-copy-muted" />
+      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ pointerEvents: "none" }}>
         <polygon points="25,5 75,5 95,50 75,95 25,95 5,50" fill="var(--color-surface)" stroke={stroke} strokeWidth="2" />
       </svg>
       <Handle type="target" position={Position.Top} />
-      <span className="relative z-10 text-copy-primary text-sm text-center px-2">{data.label}</span>
+      <EditableLabel id={id} label={data.label} className="relative z-10 text-copy-primary text-sm text-center px-2" />
       <Handle type="source" position={Position.Bottom} />
     </div>
   )
 }
 
-function CanvasNode({ data, selected }: { data: CanvasNodeData; selected?: boolean }) {
+function CanvasNode({ id, data, selected }: { id: string; data: CanvasNodeData; selected?: boolean }) {
   switch (data.shape) {
     case "diamond":
-      return <DiamondNode data={data} selected={selected} />
+      return <DiamondNode id={id} data={data} selected={selected} />
     case "circle":
-      return <CircleNode data={data} selected={selected} />
+      return <CircleNode id={id} data={data} selected={selected} />
     case "pill":
-      return <PillNode data={data} selected={selected} />
+      return <PillNode id={id} data={data} selected={selected} />
     case "cylinder":
-      return <CylinderNode data={data} selected={selected} />
+      return <CylinderNode id={id} data={data} selected={selected} />
     case "hexagon":
-      return <HexagonNode data={data} selected={selected} />
+      return <HexagonNode id={id} data={data} selected={selected} />
     default:
-      return <RectangleNode data={data} selected={selected} />
+      return <RectangleNode id={id} data={data} selected={selected} />
   }
 }
 
@@ -129,6 +203,16 @@ function FlowCanvas() {
     useLiveblocksFlow({ suspense: true })
   const reactFlow = useReactFlow()
   const counterRef = useRef(0)
+
+  const updateNodeLabel = useCallback(
+    (id: string, label: string) => {
+      const node = reactFlow.getNode(id)
+      if (node) {
+        onNodesChange([{ type: "replace", id, item: { ...node, data: { ...node.data, label } } }])
+      }
+    },
+    [reactFlow, onNodesChange],
+  )
 
   const onDragOver: React.DragEventHandler<HTMLDivElement> = useCallback((e) => {
     e.preventDefault()
@@ -166,6 +250,7 @@ function FlowCanvas() {
   )
 
   return (
+    <NodeEditContext.Provider value={{ updateNodeLabel }}>
     <ReactFlow
       nodes={nodes}
       edges={edges}
@@ -185,8 +270,10 @@ function FlowCanvas() {
         position="bottom-left"
         style={{ background: "var(--color-surface)" }}
       />
+      <Cursors />
       <ShapePanel />
     </ReactFlow>
+    </NodeEditContext.Provider>
   )
 }
 
@@ -227,6 +314,9 @@ export function Canvas({ roomId }: CanvasProps) {
         <RoomProvider
           id={roomId}
           initialPresence={{ cursor: null, isThinking: false }}
+          initialStorage={{
+            flow: new LiveObject({ nodes: new LiveMap(), edges: new LiveMap() }),
+          }}
         >
           <ClientSideSuspense fallback={<Loading />}>
             <CanvasInner />
