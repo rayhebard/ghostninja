@@ -44,7 +44,7 @@ export function WorkspaceShell({
         isAiSidebarOpen={isAiSidebarOpen}
         onToggleAiSidebar={() => setIsAiSidebarOpen((prev) => !prev)}
         onShare={() => setShareOpen(true)}
-        onOpenTemplates={() => setTemplateModalOpen(true)}
+        onOpenTemplates={importTemplate ? () => setTemplateModalOpen(true) : undefined}
       />
 
       <ShareDialog

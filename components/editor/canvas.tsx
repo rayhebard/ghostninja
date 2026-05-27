@@ -11,7 +11,7 @@ import { ReactFlow, ReactFlowProvider, Background, MiniMap, BackgroundVariant, u
 import "@xyflow/react/dist/style.css"
 import { ShapePanel, getShapePayload } from "./shape-panel"
 import { CollaboratorAvatars } from "./collaborator-avatars"
-import type { CanvasNodeData, CanvasEdge } from "@/types/canvas"
+import type { CanvasNodeData, CanvasNode, CanvasEdge } from "@/types/canvas"
 import { NODE_COLORS } from "@/types/canvas"
 import type { CanvasTemplate } from "./starter-templates"
 import { ZoomIn, ZoomOut, Maximize, Undo, Redo } from "lucide-react"
@@ -391,8 +391,8 @@ function ColorToolbar() {
 
 function FlowCanvas({ onRegister }: { onRegister?: (fn: ((template: CanvasTemplate) => void) | null) => void }) {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete } =
-    useLiveblocksFlow({ suspense: true })
-  const reactFlow = useReactFlow()
+    useLiveblocksFlow<CanvasNode, CanvasEdge>({ suspense: true })
+  const reactFlow = useReactFlow<CanvasNode, CanvasEdge>()
   const counterRef = useRef(0)
   const { undo, redo, canUndo, canRedo } = useHistory()
 
@@ -404,7 +404,7 @@ function FlowCanvas({ onRegister }: { onRegister?: (fn: ((template: CanvasTempla
     const nodesToDelete = reactFlow.getNodes().filter(n => n.selected)
     const edgesToDelete = reactFlow.getEdges().filter(e => e.selected)
     if (nodesToDelete.length > 0 || edgesToDelete.length > 0) {
-      onDelete({ nodes: nodesToDelete as any, edges: edgesToDelete as any })
+      onDelete({ nodes: nodesToDelete, edges: edgesToDelete })
     }
   }, [reactFlow, onDelete])
 
@@ -437,7 +437,7 @@ function FlowCanvas({ onRegister }: { onRegister?: (fn: ((template: CanvasTempla
     (id: string, label: string) => {
       const node = reactFlow.getNode(id)
       if (node) {
-        onNodesChange([{ type: "replace", id, item: { ...node, data: { ...node.data, label } as CanvasNodeData } }])
+        onNodesChange([{ type: "replace", id, item: { ...node, data: { ...node.data, label } } }])
       }
     },
     [reactFlow, onNodesChange],
@@ -447,7 +447,7 @@ function FlowCanvas({ onRegister }: { onRegister?: (fn: ((template: CanvasTempla
     (id: string, color: string, textColor: string) => {
       const node = reactFlow.getNode(id)
       if (node) {
-        onNodesChange([{ type: "replace", id, item: { ...node, data: { ...node.data, color, textColor } as CanvasNodeData } }])
+        onNodesChange([{ type: "replace", id, item: { ...node, data: { ...node.data, color, textColor } } }])
       }
     },
     [reactFlow, onNodesChange],
@@ -457,7 +457,7 @@ function FlowCanvas({ onRegister }: { onRegister?: (fn: ((template: CanvasTempla
     (id: string, label: string) => {
       const edge = reactFlow.getEdge(id)
       if (edge) {
-        onEdgesChange([{ type: "replace", id, item: { ...edge, type: "canvasEdge", data: { ...edge.data, label } } as any }])
+        onEdgesChange([{ type: "replace", id, item: { ...edge, type: "canvasEdge", data: { ...edge.data, label } } }])
       }
     },
     [reactFlow, onEdgesChange],
@@ -474,10 +474,10 @@ function FlowCanvas({ onRegister }: { onRegister?: (fn: ((template: CanvasTempla
         onEdgesChange(currentEdges.map(e => ({ type: "remove" as const, id: e.id })))
       }
       onNodesChange(
-        template.nodes.map(n => ({ type: "add" as const, item: n })) as any
+        template.nodes.map(n => ({ type: "add" as const, item: n }))
       )
       onEdgesChange(
-        template.edges.map(e => ({ type: "add" as const, item: e })) as any
+        template.edges.map(e => ({ type: "add" as const, item: e }))
       )
       window.requestAnimationFrame(() => {
         reactFlow.fitView({ duration: 200 })

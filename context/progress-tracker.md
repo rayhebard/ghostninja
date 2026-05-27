@@ -149,6 +149,7 @@ Update this file whenever the current phase, active feature, or implementation s
   - Wired cursor broadcasting in `FlowCanvas` — `useUpdateMyPresence()` broadcasts cursor on `onMouseMove` (throttled via `requestAnimationFrame`), clears to `null` on `onMouseLeave`; coordinates converted via `reactFlow.screenToFlowPosition()`
   - Added presence group via React Flow `<Panel position="top-right">` inside the canvas — collaborator avatars + vertical divider (only when collaborators exist) + Clerk `UserButton` for the current user
   - Existing `<Cursors />` from `@liveblocks/react-flow` already renders live cursor pointers for other participants at the correct flow positions
+- Removed all `as any` and `as CanvasNodeData` casts from `canvas.tsx` — properly typed `useReactFlow<CanvasNode, CanvasEdge>()` and `useLiveblocksFlow<CanvasNode, CanvasEdge>({ suspense: true })` so all React Flow mutation handlers (`onDelete`, `onNodesChange`, `onEdgesChange`) pass correctly typed payloads
 
 ## Notes
 

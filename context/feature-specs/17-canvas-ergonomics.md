@@ -4,11 +4,11 @@ Add a floating control bar for zoom and undo/redo, then wire the same actions to
 
 1. Add a pill-shaped control bar at the bottom-left of canvas.
     
-    It should sit above the shape palen and include two groups:
+    It should sit above the shape panel and include two groups:
     - zoom controls: zoom out, fit view, zoom in 
     - history controls: undo, redo
 
-    Seperate the two groups with a thin divider.
+    Separate the two groups with a thin divider.
 
 2. Wire the zoom controls to the React Flow instance.
     - zoom in 
@@ -25,8 +25,8 @@ Add a floating control bar for zoom and undo/redo, then wire the same actions to
 4. Create a `useKeyboardShortcuts` hook in `hooks/`.
 
     The hook should:
-    - receive the Reach Flow instance
-    - recieve undo and redo handlers
+    - receive the React Flow instance
+    - receive undo and redo handlers
     - listen for keyboard shortcuts on `window`
     - ignore shortcuts while typing in inputs, textareas, or editable text fields
 
@@ -43,7 +43,7 @@ Add a floating control bar for zoom and undo/redo, then wire the same actions to
 - don't change the node or edge rendering
 - don't add extra canvas controls
 - don't change the exisiting collaborative state setup
-- keeep this focused on resize and label editing only
+- keep this focused on resize and label editing only
 
 ## Check when done
 - Select the nodes show resizes handled.

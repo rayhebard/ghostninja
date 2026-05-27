@@ -38,11 +38,8 @@ export async function POST(request: Request) {
       name = lastName ? `${user.firstName} ${lastName}` : user.firstName;
     } else if (user.username && user.username.trim()) {
       name = user.username;
-    } else if (user.emailAddresses && user.emailAddresses.length > 0) {
-      const email = user.emailAddresses[0]?.emailAddress;
-      if (email) {
-        name = email.split("@")[0];
-      }
+    } else {
+      name = `User-${user.id.slice(-8)}`;
     }
   }
   

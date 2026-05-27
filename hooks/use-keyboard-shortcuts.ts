@@ -23,26 +23,27 @@ export function useKeyboardShortcuts({ zoomIn, zoomOut, undo, redo, deleteSelect
       }
 
       const mod = e.metaKey || e.ctrlKey
+      const key = e.key.toLowerCase()
 
-      if (e.key === "+" || e.key === "=") {
+      if ((e.key === "+" || e.key === "=") && mod) {
         e.preventDefault()
         zoomIn()
         return
       }
 
-      if (e.key === "-") {
+      if (e.key === "-" && mod) {
         e.preventDefault()
         zoomOut()
         return
       }
 
-      if (mod && e.key === "z" && !e.shiftKey) {
+      if (mod && key === "z" && !e.shiftKey) {
         e.preventDefault()
         undo()
         return
       }
 
-      if ((mod && e.key === "z" && e.shiftKey) || (mod && e.key === "y")) {
+      if ((mod && key === "z" && e.shiftKey) || (mod && key === "y")) {
         e.preventDefault()
         redo()
         return
