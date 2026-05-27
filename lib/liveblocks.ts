@@ -37,6 +37,7 @@ export async function ensureRoomExists(roomId: string): Promise<void> {
         },
         body: JSON.stringify({
           id: roomId,
+          defaultAccesses: [],
         }),
         signal: controller.signal,
       },

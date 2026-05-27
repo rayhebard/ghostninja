@@ -5,6 +5,11 @@ Update this file whenever the current phase, active feature, or implementation s
 ## Current Phase
 
 - Canvas: node resizing + inline label editing (spec 14 complete)
+- Canvas: node color toolbar (spec 15 complete)
+- Canvas: edge behaviors + labels (spec 16 complete)
+- Canvas: ergonomics — control bar + keyboard shortcuts (spec 17 complete)
+- Canvas: starter templates (spec 18 complete)
+- Canvas: presence avatars + live cursors (spec 19 complete)
 
 ## Current Goal
 
@@ -100,6 +105,50 @@ Update this file whenever the current phase, active feature, or implementation s
   - Escape cancels; blur saves
   - `nodrag nowheel` on textarea prevents canvas drag/pan interference
   - `NodeEditContext` provides `updateNodeLabel(id, label)` from `FlowCanvas` — uses `reactFlow.getNode()` + `onNodesChange([{ type: "replace", ... }])` so all label changes sync to Liveblocks through the controlled flow
+- Added node color toolbar (spec 15):
+  - Added `NODE_COLORS` constant in `types/canvas.ts` with 8 color pairs (fill + text) from `ui-context.md`
+  - Added `textColor: string` to `CanvasNodeData` interface
+  - Added `ColorToolbar` component — floating bar positioned above the selected node using the React Flow viewport transform
+  - Color swatches have hover glow (`box-shadow` in the swatch's text color) and active outline indicator
+  - Toolbar has `nodrag nowheel` to prevent canvas drag/pan interference
+  - Swatch click calls `updateNodeColor(id, fill, textColor)` which goes through `onNodesChange` → Liveblocks
+  - All 6 node components now use `data.color` as background/fill and `data.textColor` as text color (SVG nodes: fill replaces `var(--color-surface)`, CSS nodes: `backgroundColor` replaces `bg-surface`)
+  - New dropped nodes default to neutral pair (`#1F1F1F` / `#EDEDED`)
+  - EditableLabel textarea inherits text color from parent via `color: inherit`
+  - Cast `as CanvasNodeData` on spread+override to work around TypeScript index signature restriction
+- Added edge behaviors and labels (spec 16):
+  - Added `CanvasEdgeData` interface with `label?: string` to `types/canvas.ts`
+  - Added Left/Right connection handles to all 6 node components (Top/Bottom/Left/Right) — small white dots with dark border, hidden by default, fade in on node hover via `opacity: 0 → 1` CSS transition
+  - Created `CanvasEdgeComponent` — custom edge renderer using `getSmoothStepPath` for right-angle routing, `BaseEdge` with `interactionWidth={20}` for easier clicking, dimmed at rest (`var(--color-copy-muted)`), brand-colored on hover/select (`var(--color-brand)`)
+  - Added inline SVG arrowhead markers in `<defs>` (dimmed/brand variants) referenced via `markerEnd`
+  - Added edge label editing via `EdgeLabelRenderer` positioned at path midpoint from `getSmoothStepPath`:
+    - Double-click edge to edit; uses growing `<input>` (via `size` attribute)
+    - Save on blur/Enter, cancel on Escape
+    - Saved labels shown as small pill badges; faint "Label" hint when selected and empty
+    - `nodrag nowheel` + `stopPropagation` prevents canvas drag/pan
+    - `updateEdgeLabel` goes through `onEdgesChange` → Liveblocks
+  - New connections default to `type: "canvasEdge"` via `defaultEdgeOptions`
+  - Registered `edgeTypes` on `<ReactFlow>`; cast `as any` for edge replace in `onEdgesChange` workaround
+- Added canvas ergonomics — control bar + keyboard shortcuts (spec 17):
+  - Created `hooks/use-keyboard-shortcuts.ts` — listens on `window`, ignores shortcuts when focus is in INPUT/TEXTAREA/contentEditable
+  - Shortcuts: `+`/`=` zoom in, `-` zoom out, `Cmd+Z` undo, `Cmd+Shift+Z`/`Cmd+Y` redo
+  - Added pill-shaped control bar at `bottom-left` via React Flow `<Panel>` with two groups separated by a thin divider
+  - Zoom group: zoom out, fit view (via `reactFlow.fitView({ duration: 200 })`), zoom in — all with animated transitions
+  - History group: undo/redo wired to Liveblocks `useHistory()` — disabled state dimmed when `canUndo`/`canRedo` is false
+  - Icons from lucide-react: ZoomOut, Maximize, ZoomIn, Undo, Redo
+  - Control bar sits above the shape panel at bottom-left, styled consistently with the shape panel (rounded-full, surface bg, border)
+- Added starter templates (spec 18):
+  - Created `components/editor/starter-templates.ts` — `CanvasTemplate` type, helper functions (`getTemplateBounds`, `n`, `e`), and `CANVAS_TEMPLATES` array with 3 templates (Microservices System, CI/CD Pipeline, Event-Driven System) using shared canvas types
+  - Created `components/editor/starter-template-modal.tsx` — shadcn `Dialog` with scrollable grid of template cards, each containing a lightweight SVG preview (drawn from node positions/shapes without React Flow), name, description, and Import button
+  - Added `LayoutTemplate` button to `WorkspaceNavbar` to open the modal
+  - `WorkspaceShell` manages modal state plus an `importTemplate` registration pattern: `Canvas`/`FlowCanvas` registers an `importTemplate` function prop-drilled via `onRegisterImportTemplate` → `onRegister` → `FlowCanvas` `useEffect`
+  - Import flow: removes all existing nodes/edges via `onNodesChange`/`onEdgesChange` remove changes, adds template nodes/edges via add changes, then `fitView` on next animation frame
+- Added presence avatars and live cursors (spec 19):
+  - Presence types (`cursor: {x,y} | null`, `isThinking: boolean`) already defined in `liveblocks.config.ts`
+  - Created `components/editor/collaborator-avatars.tsx` — uses `useOthers()` from Liveblocks and `useUser()` from Clerk to show other participants in an overlapping avatar stack; excludes current user; shows up to 5 avatars with +N overflow pill; falls back to initials when no profile photo; subtle `border-base` ring for readability on dark canvas
+  - Wired cursor broadcasting in `FlowCanvas` — `useUpdateMyPresence()` broadcasts cursor on `onMouseMove` (throttled via `requestAnimationFrame`), clears to `null` on `onMouseLeave`; coordinates converted via `reactFlow.screenToFlowPosition()`
+  - Added presence group via React Flow `<Panel position="top-right">` inside the canvas — collaborator avatars + vertical divider (only when collaborators exist) + Clerk `UserButton` for the current user
+  - Existing `<Cursors />` from `@liveblocks/react-flow` already renders live cursor pointers for other participants at the correct flow positions
 
 ## Notes
 

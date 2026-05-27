@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, PanelLeftOpen, PanelLeftClose, Share2, Bot } from "lucide-react"
+import { ArrowLeft, PanelLeftOpen, PanelLeftClose, Share2, Bot, LayoutTemplate } from "lucide-react"
 import Link from "next/link"
 import { UserButton } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
@@ -11,6 +11,7 @@ interface WorkspaceNavbarProps {
   isAiSidebarOpen: boolean
   onToggleAiSidebar: () => void
   onShare: () => void
+  onOpenTemplates?: () => void
 }
 
 export function WorkspaceNavbar({
@@ -18,6 +19,7 @@ export function WorkspaceNavbar({
   isAiSidebarOpen,
   onToggleAiSidebar,
   onShare,
+  onOpenTemplates,
 }: WorkspaceNavbarProps) {
   const { sidebarOpen, toggleSidebar } = useProjectDialogContext()
 
@@ -56,6 +58,11 @@ export function WorkspaceNavbar({
         <Button variant="ghost" size="icon" aria-label="Share project" onClick={onShare}>
           <Share2 className="h-4 w-4" />
         </Button>
+        {onOpenTemplates && (
+          <Button variant="ghost" size="icon" aria-label="Starter templates" onClick={onOpenTemplates}>
+            <LayoutTemplate className="h-4 w-4" />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
