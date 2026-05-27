@@ -27,7 +27,22 @@ export async function POST(request: Request) {
   }
 
   const user = await currentUser();
-  const name = user?.fullName ?? user?.username ?? session.userId;
+  
+  // Extract user name with multiple fallbacks
+  let name = "User";
+  if (user) {
+    if (user.fullName && user.fullName.trim()) {
+      name = user.fullName;
+    } else if (user.firstName && user.firstName.trim()) {
+      const lastName = user.lastName?.trim() || "";
+      name = lastName ? `${user.firstName} ${lastName}` : user.firstName;
+    } else if (user.username && user.username.trim()) {
+      name = user.username;
+    } else {
+      name = `User-${user.id.slice(-8)}`;
+    }
+  }
+  
   const avatar = user?.imageUrl ?? "";
   const color = getUserColor(session.userId);
 
