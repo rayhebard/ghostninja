@@ -7,15 +7,16 @@ import { UserButton } from "@clerk/nextjs"
 import { useLiveblocksFlow } from "@liveblocks/react-flow"
 import { LiveCursors } from "./live-cursors"
 import "@liveblocks/react-flow/styles.css"
-import { ReactFlow, ReactFlowProvider, Background, MiniMap, BackgroundVariant, useReactFlow, useStore, Handle, Position, NodeResizer, BaseEdge, getSmoothStepPath, EdgeLabelRenderer, Panel, type Node, type EdgeProps } from "@xyflow/react"
+import { ReactFlow, ReactFlowProvider, Background, MiniMap, BackgroundVariant, useReactFlow, useStore, Handle, Position, NodeResizer, BaseEdge, getSmoothStepPath, EdgeLabelRenderer, Panel, type Node, type Edge, type EdgeProps } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { ShapePanel, getShapePayload } from "./shape-panel"
 import { CollaboratorAvatars } from "./collaborator-avatars"
 import type { CanvasNodeData, CanvasNode, CanvasEdge } from "@/types/canvas"
 import { NODE_COLORS } from "@/types/canvas"
 import type { CanvasTemplate } from "./starter-templates"
-import { ZoomIn, ZoomOut, Maximize, Undo, Redo } from "lucide-react"
+import { ZoomIn, ZoomOut, Maximize, Undo, Redo, Cloud, CloudOff, LoaderIcon } from "lucide-react"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
+import { useCanvasAutosave } from "@/hooks/use-canvas-autosave"
 
 const NodeEditContext = createContext<{
   updateNodeLabel: (id: string, label: string) => void
@@ -389,12 +390,49 @@ function ColorToolbar() {
   )
 }
 
-function FlowCanvas({ onRegister }: { onRegister?: (fn: ((template: CanvasTemplate) => void) | null) => void }) {
+function FlowCanvas({ projectId, onRegister }: { projectId: string; onRegister?: (fn: ((template: CanvasTemplate) => void) | null) => void }) {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete } =
     useLiveblocksFlow<CanvasNode, CanvasEdge>({ suspense: true })
   const reactFlow = useReactFlow<CanvasNode, CanvasEdge>()
   const counterRef = useRef(0)
   const { undo, redo, canUndo, canRedo } = useHistory()
+  const { status, saveNow } = useCanvasAutosave(projectId, nodes, edges)
+  const loadedRef = useRef(false)
+
+  useEffect(() => {
+    if (loadedRef.current) return
+    if (nodes.length > 0 || edges.length > 0) {
+      loadedRef.current = true
+      return
+    }
+
+    const loadSaved = async () => {
+      try {
+        const res = await fetch(`/api/projects/${projectId}/canvas`)
+        if (!res.ok) {
+          loadedRef.current = true
+          return
+        }
+        const data = await res.json()
+        if (data.nodes?.length || data.edges?.length) {
+          if (data.nodes?.length) {
+            onNodesChange(data.nodes.map((n: Node) => ({ type: "add" as const, item: n })))
+          }
+          if (data.edges?.length) {
+            onEdgesChange(data.edges.map((e: Edge) => ({ type: "add" as const, item: e })))
+          }
+          window.requestAnimationFrame(() => {
+            reactFlow.fitView({ duration: 200 })
+          })
+        }
+      } catch {
+        // silent — room has no saved state
+      }
+      loadedRef.current = true
+    }
+
+    loadSaved()
+  }, [])
 
   const zoomIn = useCallback(() => reactFlow.zoomIn({ duration: 200 }), [reactFlow])
   const zoomOut = useCallback(() => reactFlow.zoomOut({ duration: 200 }), [reactFlow])
@@ -564,6 +602,30 @@ function FlowCanvas({ onRegister }: { onRegister?: (fn: ((template: CanvasTempla
       `}</style>
       <Panel position="bottom-center" style={{ bottom: 56 }}>
         <div className="flex items-center gap-1 rounded-full border border-border-default bg-surface px-2 py-1.5 shadow-lg">
+          <span
+            className="flex items-center gap-1 px-1.5 py-0.5 text-xs rounded-full"
+            style={{
+              color:
+                status === "idle" ? "var(--color-copy-muted)" :
+                status === "saving" ? "var(--color-state-warning)" :
+                status === "saved" ? "var(--color-state-success)" :
+                "var(--color-state-error)",
+            }}
+          >
+            {status === "saving" && <LoaderIcon className="h-3 w-3 animate-spin" />}
+            {status === "saved" && <Cloud className="h-3 w-3" />}
+            {status === "error" && <CloudOff className="h-3 w-3" />}
+            {status === "idle" && <Cloud className="h-3 w-3 opacity-50" />}
+            <span className="text-[10px] font-medium mr-0.5">{status}</span>
+            <button
+              onClick={saveNow}
+              title="Save now"
+              className="flex items-center justify-center rounded-full p-0.5 text-copy-muted transition-colors hover:text-copy-primary"
+            >
+              <Cloud className="h-2.5 w-2.5" />
+            </button>
+          </span>
+          <div className="mx-1 h-4 w-px bg-border-default" />
           <button
             onClick={zoomOut}
             title="Zoom out"
@@ -623,11 +685,11 @@ function FlowCanvas({ onRegister }: { onRegister?: (fn: ((template: CanvasTempla
   )
 }
 
-function CanvasInner({ onRegister }: { onRegister?: (fn: ((template: CanvasTemplate) => void) | null) => void }) {
+function CanvasInner({ projectId, onRegister }: { projectId: string; onRegister?: (fn: ((template: CanvasTemplate) => void) | null) => void }) {
   return (
     <div className="flex-1">
       <ReactFlowProvider>
-        <FlowCanvas onRegister={onRegister} />
+        <FlowCanvas projectId={projectId} onRegister={onRegister} />
       </ReactFlowProvider>
     </div>
   )
@@ -651,10 +713,11 @@ function ErrorFallback() {
 
 interface CanvasProps {
   roomId: string
+  projectId: string
   onRegisterImportTemplate?: (fn: ((template: CanvasTemplate) => void) | null) => void
 }
 
-export function Canvas({ roomId, onRegisterImportTemplate }: CanvasProps) {
+export function Canvas({ roomId, projectId, onRegisterImportTemplate }: CanvasProps) {
   return (
     <ErrorBoundary fallback={<ErrorFallback />}>
       <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
@@ -666,7 +729,7 @@ export function Canvas({ roomId, onRegisterImportTemplate }: CanvasProps) {
           }}
         >
           <ClientSideSuspense fallback={<Loading />}>
-            <CanvasInner onRegister={onRegisterImportTemplate} />
+            <CanvasInner projectId={projectId} onRegister={onRegisterImportTemplate} />
           </ClientSideSuspense>
         </RoomProvider>
       </LiveblocksProvider>
