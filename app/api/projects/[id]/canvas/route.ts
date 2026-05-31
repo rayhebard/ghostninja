@@ -22,11 +22,18 @@ export async function PUT(
     }
 
     const body = await request.json();
+    if (!Array.isArray(body.nodes) || !Array.isArray(body.edges)) {
+      return NextResponse.json(
+        { error: "Invalid canvas data: nodes and edges must be arrays" },
+        { status: 400 }
+      );
+    }
     const canvasJson = JSON.stringify(body);
 
     const blob = await put(`canvases/${id}.json`, canvasJson, {
       contentType: "application/json",
       access: "private",
+      allowOverwrite: true,
     });
 
     await prisma.project.update({

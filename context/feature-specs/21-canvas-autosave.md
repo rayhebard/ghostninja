@@ -1,20 +1,20 @@
-Add autoave and loadign for the collaborative canvas so project state is presisted before adding AI generated Canvas JSON should be stored in Vercel Blob, and the saved blob URL should be stored on the Prisma project record.
+Add autosave and loading for the collaborative canvas so project state is persisted; AI-generated Canvas JSON should be stored in Vercel Blob, and the saved blob URL should be stored on the Prisma project record.
 
 - `@vercel/blob`
 
 ## Implementation
 
-1. Check the exiting project schema.
-    - review `prisma/model/project.prisma`
-    - add or reuqe a field for the canvas blob URL
-    - keep Prisma responsilbe for metadata only
+1. Check the existing project schema.
+    - review `prisma/models/project.prisma`
+    - add or require a field for the canvas blob URL
+    - keep Prisma responsible for metadata only
 
 2. Add canvas save/load API routes.
     Create: `PUT /api/projects/[projectId]/canvas`
-    This route: should:
-    - recieve the latest canvas JSON
-    - upldate the JSON to Vercel Blob
-    - store the returned bloc URL on the matching Prisma project record
+    This route should:
+    - receive the latest canvas JSON
+    - upload the JSON to Vercel Blob
+    - store the returned blob URL on the matching Prisma project record
 
     Create: `GET /api/projects/[projectId]/canvas`
     This route should:
@@ -22,9 +22,9 @@ Add autoave and loadign for the collaborative canvas so project state is presist
     - fetch the saved canvas JSON from Vercel Blob
     - return the canvas state to the editor
 
-3. Add an autosave hook in the `/hook` folder.
+3. Add an autosave hook in the `/hooks` folder.
     - watch the canvas nodes and edges
-    - debounce saves to avoid excenssive writes
+    - debounce saves to avoid excessive writes
     - save through the canvas API route
     - track save status: saving, saved, error
 
@@ -36,19 +36,18 @@ Add autoave and loadign for the collaborative canvas so project state is presist
 5. Add a small save status indicator in the editor Save button.
     - show saving, saved, or error states
 
-## Storeage Pattern
+## Storage Pattern
 
 - Prisma stores project metadata and the canvas blob URL.
-- Vercel Blob stores the actuall canvas JSON.
+- Vercel Blob stores the actual canvas JSON.
 
 ## Check When Done 
 
-- `@vercel/blob` s in installed. 
+- `@vercel/blob` is installed. 
 - Project schema supports storing the canvas blob URL.
-- Save/Load roures use Prisma for metadata and Vercel Blob for canvas JSON.
+- Save/Load routes use Prisma for metadata and Vercel Blob for canvas JSON.
 - Autosave hook debounces canvas saves.
-- Editor show save status.
+- Editor shows save status.
 - Saved canvas does not load if the room already has active nodes or edges
 - `npm run build` passes.
-
 

@@ -13,6 +13,7 @@ export function useCanvasAutosave(
   const [status, setStatus] = useState<SaveStatus>("idle")
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef = useRef(true)
+  const skipInitialRef = useRef(true)
 
   useEffect(() => {
     mountedRef.current = true
@@ -23,8 +24,6 @@ export function useCanvasAutosave(
 
   const doSave = useCallback(
     async (nodes: Node[], edges: Edge[]) => {
-      if (nodes.length === 0 && edges.length === 0) return
-
       setStatus("saving")
       try {
         const res = await fetch(`/api/projects/${projectId}/canvas`, {
@@ -48,12 +47,13 @@ export function useCanvasAutosave(
   )
 
   useEffect(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current)
+    if (skipInitialRef.current) {
+      skipInitialRef.current = false
+      return
     }
 
-    if (nodes.length === 0 && edges.length === 0) {
-      return
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
     }
 
     timerRef.current = setTimeout(() => {
