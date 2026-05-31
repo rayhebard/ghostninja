@@ -4,16 +4,11 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Canvas: node resizing + inline label editing (spec 14 complete)
-- Canvas: node color toolbar (spec 15 complete)
-- Canvas: edge behaviors + labels (spec 16 complete)
-- Canvas: ergonomics — control bar + keyboard shortcuts (spec 17 complete)
-- Canvas: starter templates (spec 18 complete)
-- Canvas: presence avatars + live cursors (spec 19 complete)
+- Canvas autosave with Vercel Blob (spec 21 complete)
 
 ## Current Goal
 
-- Collaborative canvas (Liveblocks + React Flow)
+- Persist canvas state between sessions using Vercel Blob + Prisma
 
 ## Completed
 
@@ -150,6 +145,24 @@ Update this file whenever the current phase, active feature, or implementation s
   - Added presence group via React Flow `<Panel position="top-right">` inside the canvas — collaborator avatars + vertical divider (only when collaborators exist) + Clerk `UserButton` for the current user
   - Existing `<Cursors />` from `@liveblocks/react-flow` already renders live cursor pointers for other participants at the correct flow positions
 - Removed all `as any` and `as CanvasNodeData` casts from `canvas.tsx` — properly typed `useReactFlow<CanvasNode, CanvasEdge>()` and `useLiveblocksFlow<CanvasNode, CanvasEdge>({ suspense: true })` so all React Flow mutation handlers (`onDelete`, `onNodesChange`, `onEdgesChange`) pass correctly typed payloads
+- Created `components/editor/ai-sidebar.tsx` — standalone AI sidebar component extracted from `workspace-shell.tsx` placeholder:
+  - Header with bot icon, "AI Workspace" title, "Collaborate with Ghost AI" subtitle, close button
+  - Tabbed layout (shadcn `Tabs`): AI Architect and Specs
+  - AI Architect tab: scrollable chat area, empty state with starter chips, auto-resizing textarea input, send button; user/assistant message styling per spec
+  - Specs tab: "Generate Spec" button, demo spec card with file icon, title, snippet, and disabled download action
+  - Preserved floating `absolute` placement, slide animation (`translate-x-full` ↔ `translate-x-0` with transition), `bg-base/95`, `border-border-default`, shadow
+  - Open/close state controlled by parent via `isOpen`/`onClose` props
+- Canvas autosave with Vercel Blob (spec 21):
+  - Installed `@vercel/blob` package
+  - Renamed `canvasJsonPath` → `canvasBlobUrl` in Project model (`prisma/models/project.prisma`); created migration `20260528144727_rename_canvas_json_path_to_canvas_blob_url`
+  - Created `app/api/projects/[id]/canvas/route.ts` — `PUT` handler receives `{ nodes, edges }`, uploads to Vercel Blob at `canvases/{id}.json`, stores returned URL on project record; `GET` handler reads blob URL from Prisma, fetches JSON from Blob, returns it; both routes use `getProjectAccess()` for owner/collaborator authorization
+  - Created `hooks/use-canvas-autosave.ts` — watches `nodes`/`edges` arrays, debounces 2s, calls PUT API; returns `{ status, saveNow }` with `SaveStatus` type (`idle | saving | saved | error`)
+  - Wired autosave into `FlowCanvas`: calls `useCanvasAutosave(projectId, nodes, edges)`; on mount, checks if Liveblocks room is empty (`nodes.length === 0 && edges.length === 0`), if so fetches saved state from GET API and loads via `onNodesChange`/`onEdgesChange`; uses ref to prevent re-load
+  - Added save status indicator in canvas control bar — shows spinner icon (`saving`), cloud icon (`saved`), cloud-off icon (`error`) with color-coded text (muted/success/error)
+  - Added `BLOB_READ_WRITE_TOKEN` to `.env.local` for local dev
+  - `npm run build` passes, `npx tsc --noEmit` passes
+  - Check: no saved canvas loads if room already has nodes/edges (`loadedRef` + early return)
+  - Check: collaborators also authenticated via `auth()` (not owner-only); load returns 404 gracefully with empty `{ nodes: [], edges: [] }`
 
 ## Notes
 
@@ -159,6 +172,7 @@ Update this file whenever the current phase, active feature, or implementation s
 - Clerk appearance `variables` use the same hex values from `globals.css` project tokens to avoid hardcoded colors.
 - Project dialogs now backed by API — create, rename, delete hit `/api/projects` endpoints with optimistic local state updates. Rename/delete use `[id]` path parameter routes.
 - `ProjectDialogProvider` context pattern used so editor home (page) and sidebar can both trigger dialogs rendered in the layout.
+- `@vercel/blob` stores canvas JSON at `canvases/{id}.json`; in local dev it uses the file system under `.vercel/blob/` when `BLOB_READ_WRITE_TOKEN` is set.
 
 ## Architecture Decisions
 
@@ -168,6 +182,7 @@ Update this file whenever the current phase, active feature, or implementation s
 - Clerk `dark` theme from `@clerk/ui/themes` as base appearance, overridden via `variables` using project CSS token values
 - Prisma client singleton branches on `DATABASE_URL` prefix: `prisma+postgres://` uses Accelerate (`accelerateUrl`), otherwise uses `@prisma/adapter-pg` with direct `connectionString`
 - Models split into separate file under `prisma/models/` and referenced via `/// <reference>` directive
+- Canvas state persistence: Vercel Blob stores raw JSON (nodes + edges), Prisma stores only the blob URL (metadata-only). This avoids storing large JSON payloads in the relational DB and keeps Vercel Blob as the single source of truth for canvas data.
 
 ## Session Notes
 
