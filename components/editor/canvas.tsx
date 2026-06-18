@@ -1,8 +1,7 @@
 "use client"
 
 import { Component, type ReactNode, useCallback, useRef, useState, useEffect, createContext, useContext } from "react"
-import { LiveObject, LiveMap } from "@liveblocks/core"
-import { LiveblocksProvider, RoomProvider, ClientSideSuspense, useHistory, useUpdateMyPresence, useOthers } from "@liveblocks/react"
+import { LiveblocksProvider, RoomProvider, ClientSideSuspense, useHistory, useUpdateMyPresence, useOthers, useFeeds, useCreateFeed, useFeedMessages } from "@liveblocks/react"
 import { UserButton } from "@clerk/nextjs"
 import { useLiveblocksFlow } from "@liveblocks/react-flow"
 import { LiveCursors } from "./live-cursors"
@@ -12,11 +11,44 @@ import "@xyflow/react/dist/style.css"
 import { ShapePanel, getShapePayload } from "./shape-panel"
 import { CollaboratorAvatars } from "./collaborator-avatars"
 import type { CanvasNodeData, CanvasNode, CanvasEdge } from "@/types/canvas"
+import type { AiStatusPayload } from "@/types/canvas"
+import { AiStatusSchema } from "@/types/task"
 import { NODE_COLORS } from "@/types/canvas"
 import type { CanvasTemplate } from "./starter-templates"
+import { AiSidebar } from "./ai-sidebar"
 import { ZoomIn, ZoomOut, Maximize, Undo, Redo, Cloud, CloudOff, LoaderIcon } from "lucide-react"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import { useCanvasAutosave } from "@/hooks/use-canvas-autosave"
+
+function AiStatusFeed({ onStatusChange }: { onStatusChange?: (status: AiStatusPayload | null) => void }) {
+  const { feeds } = useFeeds()
+  const createFeed = useCreateFeed()
+  const { messages } = useFeedMessages("ai-status-feed")
+
+  useEffect(() => {
+    if (!feeds) return
+    const exists = feeds.some((f) => f.feedId === "ai-status-feed")
+    if (!exists) {
+      createFeed("ai-status-feed")
+    }
+  }, [feeds, createFeed])
+
+  useEffect(() => {
+    if (!messages || messages.length === 0) {
+      onStatusChange?.(null)
+      return
+    }
+    const latest = messages[messages.length - 1]
+    const parsed = AiStatusSchema.safeParse(latest.data)
+    if (parsed.success) {
+      onStatusChange?.(parsed.data.text ? parsed.data : null)
+    } else {
+      onStatusChange?.(null)
+    }
+  }, [messages, onStatusChange])
+
+  return null
+}
 
 const NodeEditContext = createContext<{
   updateNodeLabel: (id: string, label: string) => void
@@ -392,7 +424,11 @@ function ColorToolbar() {
 
 function FlowCanvas({ projectId, onRegister }: { projectId: string; onRegister?: (fn: ((template: CanvasTemplate) => void) | null) => void }) {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete } =
-    useLiveblocksFlow<CanvasNode, CanvasEdge>({ suspense: true })
+    useLiveblocksFlow<CanvasNode, CanvasEdge>({
+      suspense: true,
+      nodes: { sync: { canvasNode: { data: true } } },
+      edges: { sync: { canvasEdge: { data: true } } },
+    })
   const reactFlow = useReactFlow<CanvasNode, CanvasEdge>()
   const counterRef = useRef(0)
   const { undo, redo, canUndo, canRedo } = useHistory()
@@ -715,22 +751,26 @@ interface CanvasProps {
   roomId: string
   projectId: string
   onRegisterImportTemplate?: (fn: ((template: CanvasTemplate) => void) | null) => void
+  onAiStatusChange?: (status: AiStatusPayload | null) => void
+  isAiSidebarOpen?: boolean
+  onAiSidebarClose?: () => void
+  aiStatus?: AiStatusPayload | null
 }
 
-export function Canvas({ roomId, projectId, onRegisterImportTemplate }: CanvasProps) {
+export function Canvas({ roomId, projectId, onRegisterImportTemplate, onAiStatusChange, isAiSidebarOpen, onAiSidebarClose, aiStatus }: CanvasProps) {
   return (
     <ErrorBoundary fallback={<ErrorFallback />}>
       <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
         <RoomProvider
           id={roomId}
           initialPresence={{ cursor: null, isThinking: false }}
-          initialStorage={{
-            flow: new LiveObject({ nodes: new LiveMap(), edges: new LiveMap() }),
-          }}
+          initialStorage={undefined as unknown as never}
         >
+          <AiStatusFeed onStatusChange={onAiStatusChange} />
           <ClientSideSuspense fallback={<Loading />}>
             <CanvasInner projectId={projectId} onRegister={onRegisterImportTemplate} />
           </ClientSideSuspense>
+          <AiSidebar isOpen={!!isAiSidebarOpen} onClose={() => onAiSidebarClose?.()} aiStatus={aiStatus} />
         </RoomProvider>
       </LiveblocksProvider>
     </ErrorBoundary>

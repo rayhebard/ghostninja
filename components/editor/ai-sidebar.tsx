@@ -1,20 +1,20 @@
 "use client"
 
-import { useRef, useState } from "react"
-import { X, Bot, Sparkles, FileText, Download, Send } from "lucide-react"
+import { useRef, useState, useEffect } from "react"
+import { X, Bot, Sparkles, FileText, Download, Send, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useFeeds, useCreateFeed, useFeedMessages, useCreateFeedMessage } from "@liveblocks/react"
+import { useUser } from "@clerk/nextjs"
+import type { AiStatusPayload } from "@/types/canvas"
+import { AiChatMessageSchema } from "@/types/task"
 
 interface AiSidebarProps {
   isOpen: boolean
   onClose: () => void
-}
-
-interface ChatMessage {
-  role: "user" | "assistant"
-  content: string
+  aiStatus?: AiStatusPayload | null
 }
 
 const STARTER_CHIPS = [
@@ -23,18 +23,53 @@ const STARTER_CHIPS = [
   "Build a CI/CD pipeline",
 ]
 
-export function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+export function AiSidebar({ isOpen, onClose, aiStatus }: AiSidebarProps) {
   const [input, setInput] = useState("")
+  const [sendError, setSendError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const { user } = useUser()
+  const { feeds } = useFeeds()
+  const createFeed = useCreateFeed()
+  const { messages: feedMessages } = useFeedMessages("ai-chat")
+  const createFeedMessage = useCreateFeedMessage()
 
-  const handleSend = () => {
+  const senderName = user?.fullName || user?.username || user?.primaryEmailAddress?.emailAddress || "Anonymous"
+
+  useEffect(() => {
+    if (!feeds) return
+    const exists = feeds.some((f) => f.feedId === "ai-chat")
+    if (!exists) {
+      createFeed("ai-chat")
+    }
+  }, [feeds, createFeed])
+
+  const validatedMessages = (feedMessages ?? [])
+    .map((msg) => {
+      const parsed = AiChatMessageSchema.safeParse(msg.data)
+      if (parsed.success) {
+        return { ...parsed.data, id: msg.id }
+      }
+      return null
+    })
+    .filter((m): m is NonNullable<typeof m> => m !== null)
+
+  const handleSend = async () => {
     const text = input.trim()
     if (!text) return
-    setMessages((prev) => [...prev, { role: "user", content: text }])
-    setInput("")
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto"
+    setSendError(null)
+    try {
+      await createFeedMessage("ai-chat", {
+        sender: senderName,
+        role: "user",
+        content: text,
+        timestamp: Date.now(),
+      })
+      setInput("")
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto"
+      }
+    } catch {
+      setSendError("Failed to send message")
     }
   }
 
@@ -52,13 +87,24 @@ export function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
     }
   }
 
-  const handleStarterClick = (chip: string) => {
-    setMessages((prev) => [...prev, { role: "user", content: chip }])
-    setInput("")
+  const handleStarterClick = async (chip: string) => {
+    setSendError(null)
+    try {
+      await createFeedMessage("ai-chat", {
+        sender: senderName,
+        role: "user",
+        content: chip,
+        timestamp: Date.now(),
+      })
+    } catch {
+      setSendError("Failed to send message")
+    }
   }
 
   return (
     <aside
+      aria-hidden={!isOpen}
+      inert={!isOpen ? true : undefined}
       className={`absolute right-0 top-0 bottom-0 w-72 border-l border-border-default bg-base/95 z-30 flex flex-col shadow-2xl transition-transform duration-200 ${
         isOpen ? "translate-x-0" : "translate-x-full"
       } ${isOpen ? "" : "pointer-events-none"}`}
@@ -75,9 +121,17 @@ export function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7 shrink-0">
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {aiStatus?.text && (
+            <div className="flex items-center gap-1.5 rounded-full bg-ai/10 px-2.5 py-1 text-xs text-ai-text">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span className="truncate max-w-[100px]">{aiStatus.text}</span>
+            </div>
+          )}
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7 shrink-0" aria-label="Close">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="architect" className="flex flex-col flex-1 overflow-hidden">
@@ -99,7 +153,7 @@ export function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
         </div>
 
         <TabsContent value="architect" className="flex flex-col flex-1 overflow-hidden p-0 m-0">
-          {messages.length === 0 ? (
+          {validatedMessages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-3">
               <Bot className="h-10 w-10 text-ai-text" />
               <p className="text-sm text-copy-muted leading-relaxed">
@@ -120,10 +174,10 @@ export function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
           ) : (
             <ScrollArea className="flex-1 px-4">
               <div className="py-3 space-y-3">
-                {messages.map((msg, i) => (
+                {validatedMessages.map((msg) => (
                   <div
-                    key={i}
-                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                    key={msg.id}
+                    className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
                   >
                     <div
                       className={`max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed ${
@@ -132,7 +186,13 @@ export function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
                           : "bg-elevated border border-border-default text-ai-text"
                       }`}
                     >
+                      <span className="block text-[10px] opacity-60 mb-1">
+                        {msg.sender}
+                      </span>
                       {msg.content}
+                      <span className="block text-[10px] opacity-40 mt-1">
+                        {new Date(msg.timestamp).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -141,22 +201,32 @@ export function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
           )}
 
           <div className="p-4 border-t border-border-default">
+            {sendError && (
+              <p className="text-xs text-state-error mb-2">{sendError}</p>
+            )}
             <div className="flex gap-2 items-end">
               <Textarea
                 ref={textareaRef}
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask AI..."
+                placeholder={aiStatus?.text ? "AI is working…" : "Ask AI..."}
                 className="min-h-[72px] max-h-[160px] resize-none text-sm"
                 rows={1}
+                disabled={!!aiStatus?.text}
               />
               <Button
                 onClick={handleSend}
                 size="icon"
                 className="h-11 w-11 shrink-0 bg-accent text-white hover:bg-accent/80"
+                aria-label="Send message"
+                disabled={!!aiStatus?.text}
               >
-                <Send className="h-4 w-4" />
+                {aiStatus?.text ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </div>

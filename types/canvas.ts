@@ -26,5 +26,9 @@ export interface CanvasEdgeData {
   [key: string]: unknown
 }
 
+export interface AiStatusPayload {
+  text?: string
+}
+
 export type CanvasNode = Node<CanvasNodeData, "canvasNode">
 export type CanvasEdge = Edge<CanvasEdgeData, "canvasEdge">
