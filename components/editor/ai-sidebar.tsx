@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, useEffect } from "react"
+import { useRef, useState, useEffect, useCallback } from "react"
 import { X, Bot, Sparkles, FileText, Download, Send, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -8,13 +8,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useFeeds, useCreateFeed, useFeedMessages, useCreateFeedMessage } from "@liveblocks/react"
 import { useUser } from "@clerk/nextjs"
+import { useRealtimeRun } from "@trigger.dev/react-hooks"
 import type { AiStatusPayload } from "@/types/canvas"
 import { AiChatMessageSchema } from "@/types/task"
+import type { designAgent } from "@/trigger/design-agent"
+import type { RealtimeRun } from "@trigger.dev/core/v3"
 
 interface AiSidebarProps {
   isOpen: boolean
   onClose: () => void
   aiStatus?: AiStatusPayload | null
+  projectId: string
 }
 
 const STARTER_CHIPS = [
@@ -23,9 +27,12 @@ const STARTER_CHIPS = [
   "Build a CI/CD pipeline",
 ]
 
-export function AiSidebar({ isOpen, onClose, aiStatus }: AiSidebarProps) {
+export function AiSidebar({ isOpen, onClose, aiStatus, projectId }: AiSidebarProps) {
   const [input, setInput] = useState("")
   const [sendError, setSendError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [runId, setRunId] = useState<string | null>(null)
+  const [publicToken, setPublicToken] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { user } = useUser()
   const { feeds } = useFeeds()
@@ -34,12 +41,42 @@ export function AiSidebar({ isOpen, onClose, aiStatus }: AiSidebarProps) {
   const createFeedMessage = useCreateFeedMessage()
 
   const senderName = user?.fullName || user?.username || user?.primaryEmailAddress?.emailAddress || "Anonymous"
+  const isRunActive = isSubmitting || !!runId
+
+  const { run } = useRealtimeRun<typeof designAgent>(runId ?? undefined, {
+    accessToken: publicToken ?? undefined,
+    enabled: !!runId && !!publicToken,
+    onComplete: useCallback(
+      async (runResult: RealtimeRun<typeof designAgent>) => {
+        const output = runResult.output as
+          | { status?: string; nodesGenerated?: number; edgesGenerated?: number }
+          | undefined
+        const content =
+          output?.status === "complete"
+            ? `Design generated with ${output.nodesGenerated} nodes and ${output.edgesGenerated} edges`
+            : "Could not generate a design from that prompt"
+        try {
+          await createFeedMessage("ai-chat", {
+            sender: "AI Architect",
+            role: "assistant",
+            content,
+            timestamp: Date.now(),
+          })
+        } catch {
+          // silent
+        }
+        setRunId(null)
+        setPublicToken(null)
+      },
+      [createFeedMessage],
+    ),
+  })
 
   useEffect(() => {
     if (!feeds) return
     const exists = feeds.some((f) => f.feedId === "ai-chat")
     if (!exists) {
-      createFeed("ai-chat")
+      createFeed("ai-chat").catch(() => {})
     }
   }, [feeds, createFeed])
 
@@ -53,24 +90,84 @@ export function AiSidebar({ isOpen, onClose, aiStatus }: AiSidebarProps) {
     })
     .filter((m): m is NonNullable<typeof m> => m !== null)
 
+  const submitPrompt = useCallback(
+    async (text: string) => {
+      if (isRunActive) return
+      setSendError(null)
+      setIsSubmitting(true)
+      try {
+        await createFeedMessage("ai-chat", {
+          sender: senderName,
+          role: "user",
+          content: text,
+          timestamp: Date.now(),
+        })
+      } catch {
+        setSendError("Failed to send message")
+        setIsSubmitting(false)
+        return
+      }
+
+      try {
+        const res = await fetch("/api/ai/design", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: text, roomId: projectId, projectId }),
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          await createFeedMessage("ai-chat", {
+            sender: "System",
+            role: "assistant",
+            content: err.error || "Failed to start design task",
+            timestamp: Date.now(),
+          }).catch(() => {})
+          setIsSubmitting(false)
+          return
+        }
+        const { runId: newRunId } = await res.json()
+
+        const tokenRes = await fetch("/api/ai/design/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ runId: newRunId }),
+        })
+        if (!tokenRes.ok) {
+          await createFeedMessage("ai-chat", {
+            sender: "System",
+            role: "assistant",
+            content: "Failed to get access token",
+            timestamp: Date.now(),
+          }).catch(() => {})
+          setIsSubmitting(false)
+          return
+        }
+        const { token } = await tokenRes.json()
+
+        setRunId(newRunId)
+        setPublicToken(token)
+      } catch {
+        setSendError("Network error")
+        await createFeedMessage("ai-chat", {
+          sender: "System",
+          role: "assistant",
+          content: "Network error: failed to send message",
+          timestamp: Date.now(),
+        }).catch(() => {})
+      }
+      setIsSubmitting(false)
+    },
+    [senderName, projectId, createFeedMessage, isRunActive],
+  )
+
   const handleSend = async () => {
     const text = input.trim()
     if (!text) return
-    setSendError(null)
-    try {
-      await createFeedMessage("ai-chat", {
-        sender: senderName,
-        role: "user",
-        content: text,
-        timestamp: Date.now(),
-      })
-      setInput("")
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto"
-      }
-    } catch {
-      setSendError("Failed to send message")
+    setInput("")
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto"
     }
+    await submitPrompt(text)
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -88,17 +185,8 @@ export function AiSidebar({ isOpen, onClose, aiStatus }: AiSidebarProps) {
   }
 
   const handleStarterClick = async (chip: string) => {
-    setSendError(null)
-    try {
-      await createFeedMessage("ai-chat", {
-        sender: senderName,
-        role: "user",
-        content: chip,
-        timestamp: Date.now(),
-      })
-    } catch {
-      setSendError("Failed to send message")
-    }
+    if (isRunActive) return
+    await submitPrompt(chip)
   }
 
   return (
@@ -175,17 +263,18 @@ export function AiSidebar({ isOpen, onClose, aiStatus }: AiSidebarProps) {
             <ScrollArea className="flex-1 px-4">
               <div className="py-3 space-y-3">
                 {validatedMessages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
-                  >
                     <div
-                      className={`max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed ${
-                        msg.role === "user"
-                          ? "bg-brand-dim border-brand/50 border-2 text-copy-primary"
-                          : "bg-elevated border border-border-default text-ai-text"
-                      }`}
+                      key={msg.id}
+                      className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
                     >
+                      <div
+                       className={`max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed ${
+                         msg.role === "user"
+                           ? "text-copy-primary"
+                           : "bg-elevated border border-border-default text-ai-text"
+                       }`}
+                       style={msg.role === "user" ? { backgroundColor: "#62C073", border: "2px solid #62C073" } : undefined}
+                     >
                       <span className="block text-[10px] opacity-60 mb-1">
                         {msg.sender}
                       </span>
@@ -204,25 +293,32 @@ export function AiSidebar({ isOpen, onClose, aiStatus }: AiSidebarProps) {
             {sendError && (
               <p className="text-xs text-state-error mb-2">{sendError}</p>
             )}
+            {isRunActive && aiStatus?.text && (
+              <div className="mb-2 flex items-center gap-2 rounded-md bg-surface px-3 py-1.5 text-xs text-ai-text border-l-2 border-[#62C073]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#62C073] animate-pulse shrink-0" />
+                <span className="truncate">{aiStatus.text}</span>
+              </div>
+            )}
             <div className="flex gap-2 items-end">
               <Textarea
                 ref={textareaRef}
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder={aiStatus?.text ? "AI is working…" : "Ask AI..."}
+                placeholder={isRunActive ? "AI is working…" : "Ask AI..."}
                 className="min-h-[72px] max-h-[160px] resize-none text-sm"
                 rows={1}
-                disabled={!!aiStatus?.text}
+                disabled={isRunActive}
               />
               <Button
                 onClick={handleSend}
                 size="icon"
-                className="h-11 w-11 shrink-0 bg-accent text-white hover:bg-accent/80"
+                className="h-11 w-11 shrink-0 text-white hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{ backgroundColor: "#62C073" }}
                 aria-label="Send message"
-                disabled={!!aiStatus?.text}
+                disabled={isRunActive}
               >
-                {aiStatus?.text ? (
+                {isRunActive ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Send className="h-4 w-4" />

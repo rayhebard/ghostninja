@@ -29,7 +29,7 @@ function AiStatusFeed({ onStatusChange }: { onStatusChange?: (status: AiStatusPa
     if (!feeds) return
     const exists = feeds.some((f) => f.feedId === "ai-status-feed")
     if (!exists) {
-      createFeed("ai-status-feed")
+      createFeed("ai-status-feed").catch(() => {})
     }
   }, [feeds, createFeed])
 
@@ -770,7 +770,7 @@ export function Canvas({ roomId, projectId, onRegisterImportTemplate, onAiStatus
           <ClientSideSuspense fallback={<Loading />}>
             <CanvasInner projectId={projectId} onRegister={onRegisterImportTemplate} />
           </ClientSideSuspense>
-          <AiSidebar isOpen={!!isAiSidebarOpen} onClose={() => onAiSidebarClose?.()} aiStatus={aiStatus} />
+          <AiSidebar isOpen={!!isAiSidebarOpen} onClose={() => onAiSidebarClose?.()} aiStatus={aiStatus} projectId={projectId} />
         </RoomProvider>
       </LiveblocksProvider>
     </ErrorBoundary>

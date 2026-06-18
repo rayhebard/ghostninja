@@ -18,7 +18,7 @@ Add shared AI activity indicators so everyone in the room can see when generatio
     - keep the feed generic enough for design and spec generation later
 
 3. Add status message validation.
-    - define the feed payload schema in `type/tanks.ts`
+    - define the feed payload schema in `types/task.ts`
     - the payload should support an option `text` field
     - validate incoming messages before displaying them
 

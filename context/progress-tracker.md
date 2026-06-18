@@ -9,6 +9,8 @@ Update this file whenever the current phase, active feature, or implementation s
 - AI design agent logic with Gemini and Liveblocks canvas mutation (spec 23 complete)
 - Shared AI activity indicators (spec 24 complete)
 - Real-time room chat via ai-chat feed (spec 25 complete)
+- Functional AI chat submit + realtime run tracking (spec 26 complete)
+- Functional AI chat submit + realtime run tracking (spec 26 complete)
 
 ## Current Goal
 
@@ -209,6 +211,22 @@ Update this file whenever the current phase, active feature, or implementation s
 
 - **Explicit node/edge sync config for `data` field**:
     - Added `nodes: { sync: { canvasNode: { data: true } } }` and `edges: { sync: { canvasEdge: { data: true } } }` to `useLiveblocksFlow` in `canvas.tsx` — formally declares that all `data` sub-fields (label, color, textColor, shape) are synced, ensures `mutateFlow` uses the same config server-side via `buildNodeConfigCache`
+
+- **Functional AI chat submit with realtime run tracking (spec 26)**:
+    - Installed `@trigger.dev/react-hooks@^4.4.6` for `useRealtimeRun` hook
+    - Updated `AiSidebar` props to accept `projectId` (same as `roomId`)
+    - Added `submitPrompt()` shared function called by both textarea send and starter chips
+    - Submit flow: push user message to `ai-chat` feed → `POST /api/ai/design` → `POST /api/ai/design/token` → store `runId` + `publicToken` in state
+    - `useRealtimeRun` subscribes to run status with public access token
+    - `onComplete` pushes AI result message to `ai-chat` feed and clears run state
+    - Chat input disabled and send button shows spinner while `isRunActive` (submitting or run in progress)
+    - Submit button uses `#62C073` green accent per spec; disabled state dimmed
+    - User chat bubbles use `#62C073` green background; AI bubbles use `bg-elevated` dark background
+    - Compact status strip above input during active runs: dark base, green left border accent, animated pulse dot, AI status text
+    - Errors pushed to `ai-chat` feed as "System" messages
+    - Canvas relies on Liveblocks `useLiveblocksFlow` for real-time updates — no manual node/edge sync
+    - Updated `Canvas` component to pass `projectId` to `AiSidebar`
+    - `npx tsc --noEmit` and `npm run build` pass
 
 ## Notes
 

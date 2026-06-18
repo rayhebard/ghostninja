@@ -24,7 +24,7 @@ track AI run status in real time, and reflect AI-driven canvas updates through L
 3. Canvas updates (realtime)
 
 - Do not manually update nodes/edges
-- Rely on Liveblocks ( `useLiveblocksFlow`) to reflect changes in real 10:46
+- Rely on Liveblocks (`useLiveblocksFlow`) to reflect changes in real time
 - AI updates to nodes, edges, and presence should appear automatically
 
 4. Status display

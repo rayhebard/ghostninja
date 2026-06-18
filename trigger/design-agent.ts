@@ -14,7 +14,13 @@ function liveblocksSecret(): string {
   return key;
 }
 
-const liveblocks = new Liveblocks({ secret: liveblocksSecret() });
+let liveblocksInstance: Liveblocks | null = null;
+function getLiveblocks(): Liveblocks {
+  if (!liveblocksInstance) {
+    liveblocksInstance = new Liveblocks({ secret: liveblocksSecret() });
+  }
+  return liveblocksInstance;
+}
 
 function lbHeaders() {
   return {
@@ -193,7 +199,7 @@ export const designAgent = task({
 
     await mutateFlow(
       {
-        client: liveblocks,
+        client: getLiveblocks(),
         roomId,
         nodes: { sync: { canvasNode: { data: true } } },
         edges: { sync: { canvasEdge: { data: true } } },
