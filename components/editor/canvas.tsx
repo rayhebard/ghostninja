@@ -1,6 +1,6 @@
 "use client"
 
-import { Component, type ReactNode, useCallback, useRef, useState, useEffect, createContext, useContext } from "react"
+import { Component, type ReactNode, useCallback, useRef, useState, useEffect, useMemo, createContext, useContext } from "react"
 import { LiveblocksProvider, RoomProvider, ClientSideSuspense, useHistory, useUpdateMyPresence, useOthers, useFeeds, useCreateFeed, useFeedMessages } from "@liveblocks/react"
 import { UserButton } from "@clerk/nextjs"
 import { useLiveblocksFlow } from "@liveblocks/react-flow"
@@ -55,6 +55,12 @@ const NodeEditContext = createContext<{
   updateNodeColor: (id: string, color: string, textColor: string) => void
   updateEdgeLabel: (id: string, label: string) => void
 }>({ updateNodeLabel: () => {}, updateNodeColor: () => {}, updateEdgeLabel: () => {} })
+
+export const CanvasStateContext = createContext<{
+  getCanvasState: () => { nodes: readonly Node[]; edges: readonly Edge[] }
+}>({
+  getCanvasState: () => ({ nodes: [], edges: [] }),
+})
 
 class ErrorBoundary extends Component<
   { fallback: ReactNode; children: ReactNode },
@@ -422,7 +428,7 @@ function ColorToolbar() {
   )
 }
 
-function FlowCanvas({ projectId, onRegister }: { projectId: string; onRegister?: (fn: ((template: CanvasTemplate) => void) | null) => void }) {
+function FlowCanvas({ projectId, onRegister, onRegisterGetCanvasState }: { projectId: string; onRegister?: (fn: ((template: CanvasTemplate) => void) | null) => void; onRegisterGetCanvasState?: (fn: (() => { nodes: readonly Node[]; edges: readonly Edge[] }) | null) => void }) {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete } =
     useLiveblocksFlow<CanvasNode, CanvasEdge>({
       suspense: true,
@@ -560,10 +566,20 @@ function FlowCanvas({ projectId, onRegister }: { projectId: string; onRegister?:
     [reactFlow, onNodesChange, onEdgesChange],
   )
 
+  const nodesRef = useRef(nodes)
+  const edgesRef = useRef(edges)
+  nodesRef.current = nodes
+  edgesRef.current = edges
+
   useEffect(() => {
     onRegister?.(importTemplate)
     return () => onRegister?.(null)
   }, [importTemplate, onRegister])
+
+  useEffect(() => {
+    onRegisterGetCanvasState?.(() => ({ nodes: nodesRef.current, edges: edgesRef.current }))
+    return () => onRegisterGetCanvasState?.(null)
+  }, [onRegisterGetCanvasState])
 
   const onDragOver: React.DragEventHandler<HTMLDivElement> = useCallback((e) => {
     e.preventDefault()
@@ -721,11 +737,11 @@ function FlowCanvas({ projectId, onRegister }: { projectId: string; onRegister?:
   )
 }
 
-function CanvasInner({ projectId, onRegister }: { projectId: string; onRegister?: (fn: ((template: CanvasTemplate) => void) | null) => void }) {
+function CanvasInner({ projectId, onRegister, onRegisterGetCanvasState }: { projectId: string; onRegister?: (fn: ((template: CanvasTemplate) => void) | null) => void; onRegisterGetCanvasState?: (fn: (() => { nodes: readonly Node[]; edges: readonly Edge[] }) | null) => void }) {
   return (
     <div className="flex-1">
       <ReactFlowProvider>
-        <FlowCanvas projectId={projectId} onRegister={onRegister} />
+        <FlowCanvas projectId={projectId} onRegister={onRegister} onRegisterGetCanvasState={onRegisterGetCanvasState} />
       </ReactFlowProvider>
     </div>
   )
@@ -758,7 +774,16 @@ interface CanvasProps {
 }
 
 export function Canvas({ roomId, projectId, onRegisterImportTemplate, onAiStatusChange, isAiSidebarOpen, onAiSidebarClose, aiStatus }: CanvasProps) {
+  const getCanvasStateRef = useRef<() => { nodes: readonly Node[]; edges: readonly Edge[] }>(() => ({ nodes: [], edges: [] }))
+  const handleRegisterGetCanvasState = useCallback((fn: (() => { nodes: readonly Node[]; edges: readonly Edge[] }) | null) => {
+    getCanvasStateRef.current = fn ?? (() => ({ nodes: [], edges: [] }))
+  }, [])
+  const canvasStateValue = useMemo(() => ({
+    getCanvasState: () => getCanvasStateRef.current(),
+  }), [])
+
   return (
+    <CanvasStateContext.Provider value={canvasStateValue}>
     <ErrorBoundary fallback={<ErrorFallback />}>
       <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
         <RoomProvider
@@ -768,11 +793,12 @@ export function Canvas({ roomId, projectId, onRegisterImportTemplate, onAiStatus
         >
           <AiStatusFeed onStatusChange={onAiStatusChange} />
           <ClientSideSuspense fallback={<Loading />}>
-            <CanvasInner projectId={projectId} onRegister={onRegisterImportTemplate} />
+            <CanvasInner projectId={projectId} onRegister={onRegisterImportTemplate} onRegisterGetCanvasState={handleRegisterGetCanvasState} />
           </ClientSideSuspense>
           <AiSidebar isOpen={!!isAiSidebarOpen} onClose={() => onAiSidebarClose?.()} aiStatus={aiStatus} projectId={projectId} />
         </RoomProvider>
       </LiveblocksProvider>
     </ErrorBoundary>
+    </CanvasStateContext.Provider>
   )
 }

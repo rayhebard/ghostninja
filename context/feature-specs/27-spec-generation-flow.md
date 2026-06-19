@@ -71,6 +71,4 @@ Follow the existing Trigger.dev task patterns in the codebase for retries, loggi
 - Typescript and build pass
 
 
-- third
-
 

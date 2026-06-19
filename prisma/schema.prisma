@@ -6,3 +6,7 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+/// <reference path="./models/project.prisma" />
+/// <reference path="./models/task-run.prisma" />
+/// <reference path="./models/spec.prisma" />

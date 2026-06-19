@@ -10,7 +10,9 @@ Update this file whenever the current phase, active feature, or implementation s
 - Shared AI activity indicators (spec 24 complete)
 - Real-time room chat via ai-chat feed (spec 25 complete)
 - Functional AI chat submit + realtime run tracking (spec 26 complete)
-- Functional AI chat submit + realtime run tracking (spec 26 complete)
+- Spec generation backend flow (spec 27 complete)
+- Spec persistence and download (spec 28 complete)
+- Spec UI integration (spec 29 complete)
 
 ## Current Goal
 
@@ -209,8 +211,30 @@ Update this file whenever the current phase, active feature, or implementation s
     - Feed created on mount if missing (same pattern as `ai-status-feed`)
     - `npm run build` passes
 
+- **Spec generation backend flow (spec 27)**:
+    - Created `trigger/generate-spec.ts` — Gemini-powered (`gemini-2.5-flash`) Markdown spec generation task
+    - Input validated with Zod: `projectId`, `roomId`, `chatHistory`, `nodes`, `edges`
+    - Builds a prompt from node labels/shapes/positions and edge connections with optional chat context
+    - System prompt instructs structured Markdown output: Overview, Architecture, Data Flow, Key Design Decisions, Recommendations
+    - Returns `{ spec: string, status: "complete" }` as task output
+    - Created `app/api/ai/spec/route.ts` — `POST` accepts `roomId`, `chatHistory`, `nodes`, `edges` (no client-supplied `projectId`)
+    - Resolves `projectId` from `roomId` via `getProjectAccess()` — rejects 403 if no access
+    - Triggers `generate-spec` task, persists `TaskRun` record, returns `{ runId }`
+    - Created `app/api/ai/spec/token/route.ts` — `POST` accepts `runId`, verifies ownership, issues Trigger.dev public token scoped to that run with `1h` expiration
+    - Follows same patterns as design agent routes (auth, Prisma, Trigger.dev, error handling)
+    - `npx tsc --noEmit` and `npm run build` pass
+
 - **Explicit node/edge sync config for `data` field**:
     - Added `nodes: { sync: { canvasNode: { data: true } } }` and `edges: { sync: { canvasEdge: { data: true } } }` to `useLiveblocksFlow` in `canvas.tsx` — formally declares that all `data` sub-fields (label, color, textColor, shape) are synced, ensures `mutateFlow` uses the same config server-side via `buildNodeConfigCache`
+
+- **Spec persistence and download (spec 28)**:
+    - Created `prisma/models/spec.prisma` — `ProjectSpec` model (`id`, `projectId`, `filePath`, `createdAt`) with `@@index([projectId, createdAt])` and cascade delete
+    - Added `specs ProjectSpec[]` relation on `Project` model
+    - Updated `prisma/schema.prisma` to reference `spec.prisma`
+    - Created and applied migration `20260618230810_add_project_spec`
+    - Updated `trigger/generate-spec.ts` — after spec generation, creates `ProjectSpec` record, uploads markdown to Vercel Blob at `specs/{projectId}/{specId}.md`, updates record with blob URL; returns `specId` and `blobUrl` alongside spec
+    - Created `app/api/projects/[projectId]/specs/[specId]/download/route.ts` — authenticates via Clerk, verifies project access via `getProjectAccess()`, verifies spec belongs to project, fetches blob content, returns as `text/markdown` with `Content-Disposition: attachment` for browser download
+    - `npx tsc --noEmit` and `npm run build` pass
 
 - **Functional AI chat submit with realtime run tracking (spec 26)**:
     - Installed `@trigger.dev/react-hooks@^4.4.6` for `useRealtimeRun` hook
@@ -227,6 +251,20 @@ Update this file whenever the current phase, active feature, or implementation s
     - Canvas relies on Liveblocks `useLiveblocksFlow` for real-time updates — no manual node/edge sync
     - Updated `Canvas` component to pass `projectId` to `AiSidebar`
     - `npx tsc --noEmit` and `npm run build` pass
+
+- **Spec UI integration (spec 29)**:
+    - Created `GET /api/projects/[projectId]/specs` — lists project specs (id, filePath, createdAt) ordered by creation date desc; auth + project access enforced
+    - Created `GET /api/projects/[projectId]/specs/[specId]/content` — fetches spec markdown from Vercel Blob and returns `{ content: string }`; auth + project access + spec ownership enforced
+    - Installed `react-markdown` for client-side markdown rendering in preview modal
+    - Updated `ai-sidebar.tsx`:
+      - Specs tab now fetches real spec list on mount from `/api/projects/[projectId]/specs`
+      - Displays specs as compact clickable cards with truncated ID, date, and download button
+      - Shows loading spinner and empty state ("No specs yet. Generate one above.")
+      - Click opens a shadcn `Dialog` that fetches spec content from the content endpoint and renders as Markdown via `ReactMarkdown` inside a `ScrollArea`
+      - Download button on each list item and in the modal footer triggers browser download via temp anchor element pointing at the download endpoint
+      - Uses `prose prose-sm prose-invert` classes for markdown styling
+      - Preserved existing sidebar layout, tabs, and styling — no redesign per scope limits
+    - `npm run build` and `npx tsc --noEmit` pass
 
 ## Notes
 
@@ -252,9 +290,12 @@ Update this file whenever the current phase, active feature, or implementation s
 
 - Next.js 16 note: `priority` prop on `next/image` is deprecated in favor of `preload`
 - Generated `components/ui/*` files are not modified per spec instructions
+- API route groups under the same path prefix must use the same dynamic param name — `app/api/projects/[id]/` and `app/api/projects/[projectId]/` cause "You cannot use different slug names for the same dynamic path" errors. All specs routes were moved from `[projectId]` to `[id]` to resolve this.
 
 ## Bugs Fixed
 
 - **Vercel Blob overwrite error**: `PUT /api/projects/[id]/canvas` was calling `put()` without `allowOverwrite: true`, causing autosave to fail on the second save. Fixed by adding the option — overwriting is safe since only the latest canvas state matters.
 - **Migration data loss**: Migration `20260528144727_rename_canvas_json_path_to_canvas_blob_url` used `DROP ... ADD` instead of `RENAME COLUMN`, which would drop existing data on fresh installs. Fixed the SQL and reset the dev database (wiping all existing projects). Users need to create new projects.
-- **`node.setLocal is not a function` when clicking AI-generated nodes**: Root cause was server-side nodes created via raw `LiveObject.from(node)` bypassing the sync config that `toLiveblocksInternalNode` applies. Nodes had correct `LiveObject` structure but differed in how the sync config (especially `data` field handling) was applied. Fixed by replacing `liveblocks.mutateStorage()` + `LiveObject.from()` with `mutateFlow()` from `@liveblocks/react-flow/node`, which uses `toLiveblocksInternalNode` with the proper `buildNodeConfigCache`-resolved sync config — structurally identical to client-created nodes. Also added explicit `nodes.sync`/`edges.sync` config for `data: true` to `useLiveblocksFlow` and `mutateFlow` calls for consistency.
+- **`node.setLocal is not a function` when clicking AI-generated nodes**: Root cause was server-side nodes created via raw `LiveObject.from(node)` bypassing the sync config that `toLiveblocksInternalNode` applies. Nodes had correct `LiveObject` structure but differed in how the sync config (especially `data` field handling) was applied. Fixed by replacing `liveblocks.mutateStorage()` + `LiveObject.from()` with `mutateFlow()` from `@liveblocks/react-flow/node`, which uses `toLiveblocksInternalNode` with the proper `buildNodeConfigCache`-resolved sync config — structurally identical to client-created nodes. Also added explicit `nodes.sync`/`edges.sync` config for `data: true` to `useLiveblocksFlow` and `mutateFlow`   calls for consistency.
+- **Prisma client stale after adding `ProjectSpec` model**: The `ProjectSpec` model was added to `prisma/models/spec.prisma` and migrations were run, but `npx prisma generate` was not executed, leaving the generated client without the `projectSpec` delegate property. Any route calling `prisma.projectSpec.findMany()` threw `Cannot read properties of undefined (reading 'findMany')`. Fixed by running `npx prisma generate` to rebuild the client.
+- **"Generate Spec" button did nothing**: The button in `ai-sidebar.tsx` Specs tab had no `onClick` handler. Added `CanvasStateContext` in `canvas.tsx` to expose current nodes/edges from `FlowCanvas` to sibling `AiSidebar`. Wired `handleGenerateSpec` — calls `POST /api/ai/spec` with canvas state + chat history, subscribes via `useRealtimeRun` with public token, refreshes spec list on completion. Shows spinner/"Generating…" while run is active.
