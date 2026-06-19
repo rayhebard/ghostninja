@@ -12,6 +12,7 @@ function CursorPointer({
     cursor: other.presence.cursor,
     name: other.info?.name || "Anonymous",
     color: other.info?.color || "#666",
+    thinking: other.presence.isThinking,
   }))
   const reactFlow = useReactFlow()
 
@@ -65,8 +66,17 @@ function CursorPointer({
           fontWeight: "600",
           whiteSpace: "nowrap",
           boxShadow: "0 2px 4px rgba(0, 0, 0, 0.3)",
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
         }}
       >
+        {other.thinking && (
+          <svg className="animate-spin" width="10" height="10" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25" />
+            <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+          </svg>
+        )}
         {name}
       </div>
     </div>

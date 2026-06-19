@@ -1,4 +1,4 @@
-Set up the backedn flow for design generation using Trigger.dev. 
+Set up the backend flow for design generation using Trigger.dev. 
 This unit handles triggering background jobs, tracking runs, and issuing tokens. No AI logic yet.
 
 ## Implementation
@@ -14,7 +14,7 @@ This unit handles triggering background jobs, tracking runs, and issuing tokens.
 
 2. Add task run tracking.
 
-    Create as `TaskRun` model in Prisma to track Trigger.dev runs and verify ownerhship.
+    Create as `TaskRun` model in Prisma to track Trigger.dev runs and verify ownership.
 
     It should include:
     - `runId` (unique)
@@ -31,7 +31,7 @@ This unit handles triggering background jobs, tracking runs, and issuing tokens.
     Create: `POST /api/ai/design/token`
     This route should:
     - accept a run ID 
-    - verify owenership using the TaskRun record 
+    - verify ownership using the TaskRun record 
     - generate a Trigger.dev public token scoped to that run
     - return the token to the client
 

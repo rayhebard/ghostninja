@@ -2,29 +2,33 @@
 
 ## Theme
 
-Dark only. No light mode. The visual language is a dark technical workspace — near-black backgrounds, layered surfaces, and vivid accent colors for interactive elements.
+Supports both dark and light mode. Dark is the default. The visual language is a technical workspace — layered surfaces, minimal chrome, and vivid accent colors for interactive elements.
 
 All colors are defined as CSS custom properties in `globals.css` and mapped to Tailwind tokens via `@theme inline`. Components must use these tokens — no hardcoded hex values or raw Tailwind color classes like `zinc-*`.
 
-| Role             | CSS Variable           | Hex / Value               |
-| ---------------- | ---------------------- | ------------------------- |
-| Page background  | `--bg-base`            | `#080809`                 |
-| Surface          | `--bg-surface`         | `#111114`                 |
-| Elevated surface | `--bg-elevated`        | `#18181c`                 |
-| Subtle surface   | `--bg-subtle`          | `#1e1e23`                 |
-| Default border   | `--border-default`     | `#2a2a30`                 |
-| Subtle border    | `--border-subtle`      | `#3a3a42`                 |
-| Primary text     | `--text-primary`       | `#f0f0f4`                 |
-| Secondary text   | `--text-secondary`     | `#c0c0cc`                 |
-| Muted text       | `--text-muted`         | `#808090`                 |
-| Faint text       | `--text-faint`         | `#505060`                 |
-| Brand accent     | `--accent-primary`     | `#00c8d4` (cyan)          |
-| Brand dim        | `--accent-primary-dim` | `rgba(0, 200, 212, 0.12)` |
-| AI accent        | `--accent-ai`          | `#6457f9` (indigo-purple) |
-| AI text          | `--accent-ai-text`     | `#8b82ff`                 |
-| Error            | `--state-error`        | `#ff4d4f`                 |
-| Success          | `--state-success`      | `#34d399`                 |
-| Warning          | `--state-warning`      | `#fbbf24`                 |
+### Color Tokens
+
+| Role             | CSS Variable           | Dark                    | Light                   |
+| ---------------- | ---------------------- | ----------------------- | ----------------------- |
+| Page background  | `--bg-base`            | `#080809`               | `#f5f5f0`               |
+| Surface          | `--bg-surface`         | `#111114`               | `#ffffff`               |
+| Elevated surface | `--bg-elevated`        | `#18181c`               | `#f0efec`               |
+| Subtle surface   | `--bg-subtle`          | `#1e1e23`               | `#e8e7e4`               |
+| Default border   | `--border-default`     | `#2a2a30`               | `#d4d4d0`               |
+| Subtle border    | `--border-subtle`      | `#3a3a42`               | `#c0c0bc`               |
+| Primary text     | `--text-primary`       | `#f0f0f4`               | `#1a1a1e`               |
+| Secondary text   | `--text-secondary`     | `#c0c0cc`               | `#3a3a42`               |
+| Muted text       | `--text-muted`         | `#808090`               | `#808088`               |
+| Faint text       | `--text-faint`         | `#505060`               | `#b0b0b8`               |
+| Brand accent     | `--accent-primary`     | `#00c8d4` (cyan)        | `#00c8d4` (cyan)        |
+| Brand dim        | `--accent-primary-dim` | `rgba(0, 200, 212, 0.12)` | `rgba(0, 200, 212, 0.10)` |
+| AI accent        | `--accent-ai`          | `#6457f9` (indigo-purple) | `#6457f9` (indigo-purple) |
+| AI text          | `--accent-ai-text`     | `#8b82ff`               | `#6b60e0`               |
+| Error            | `--state-error`        | `#ff4d4f`               | `#e53e3e`               |
+| Success          | `--state-success`      | `#34d399`               | `#2da573`               |
+| Warning          | `--state-warning`      | `#fbbf24`               | `#d99f1c`               |
+
+Brand accent and AI accent remain the same across modes — they're vivid enough to read on both dark and light backgrounds. State colors are slightly adjusted in light mode for better contrast on pale surfaces.
 
 Tailwind utility names map to these variables. Use `bg-base`, `bg-surface`, `text-primary`, `text-muted`, `border-default`, `text-brand`, `bg-accent-primary-dim`, etc.
 
@@ -51,7 +55,7 @@ Radius increases with surface depth — smaller for inner elements, larger for o
 
 ## Node Color Palette
 
-8 defined color pairs. Each pair specifies a dark node fill and a vivid contrasting text color tuned for readability on the dark canvas. Defined in `types/canvas.ts` as `NODE_COLORS`.
+8 defined color pairs. Each pair specifies a node fill and a vivid contrasting text color tuned for readability on the canvas. Designed for the dark canvas (default) — light mode uses the same palette since nodes are consistently dark-backed for visual weight regardless of surrounding UI mode. Defined in `types/canvas.ts` as `NODE_COLORS`.
 
 | Node fill | Text color | Character              |
 | --------- | ---------- | ---------------------- |
@@ -87,7 +91,7 @@ Small white circular handles, hidden by default, revealed on node hover. Appear 
 
 ### Canvas Background
 
-React Flow `<Background>` component. Canvas sits on the base background color.
+React Flow `<Background>` component. Canvas sits on the base background color, which adapts to the active theme (near-black in dark mode, off-white in light mode). The dot pattern uses a subtle contrast color that works in both modes.
 
 ## Component Library
 
@@ -96,9 +100,9 @@ shadcn/ui on top of Tailwind. No custom design system. Components live in `compo
 ## Layout Patterns
 
 - Editor workspace: full-viewport layout — floating sidebar overlay on the left, center canvas, slide-over AI sidebar on the right.
-- Sidebars: floating overlay with dark semi-transparent background and subtle border.
-- Modals and dialogs: centered overlay, `rounded-3xl`, dark background with backdrop blur.
-- Navbar: top bar with dark background and bottom border.
+- Sidebars: floating overlay with semi-transparent background (`bg-base/95` in dark, `bg-base/90` in light) and subtle border.
+- Modals and dialogs: centered overlay, `rounded-3xl`, elevated surface background with backdrop blur.
+- Navbar: top bar with surface background and bottom border.
 
 ## Icons
 

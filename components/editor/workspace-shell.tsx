@@ -4,9 +4,9 @@ import { useState, useCallback } from "react"
 import { WorkspaceNavbar } from "./workspace-navbar"
 import { ShareDialog } from "./share-dialog"
 import { Canvas } from "./canvas"
-import { AiSidebar } from "./ai-sidebar"
 import { StarterTemplateModal } from "./starter-template-modal"
 import type { CanvasTemplate } from "./starter-templates"
+import type { AiStatusPayload } from "@/types/canvas"
 
 interface WorkspaceShellProps {
   projectName: string
@@ -23,6 +23,7 @@ export function WorkspaceShell({
   const [shareOpen, setShareOpen] = useState(false)
   const [templateModalOpen, setTemplateModalOpen] = useState(false)
   const [importTemplate, setImportTemplate] = useState<((t: CanvasTemplate) => void) | null>(null)
+  const [aiStatus, setAiStatus] = useState<AiStatusPayload | null>(null)
 
   const handleImport = useCallback(
     (template: CanvasTemplate) => {
@@ -62,9 +63,7 @@ export function WorkspaceShell({
       />
 
       <div className="relative flex flex-1 overflow-hidden">
-        <Canvas roomId={projectId} projectId={projectId} onRegisterImportTemplate={handleRegisterImport} />
-
-        <AiSidebar isOpen={isAiSidebarOpen} onClose={() => setIsAiSidebarOpen(false)} />
+        <Canvas roomId={projectId} projectId={projectId} onRegisterImportTemplate={handleRegisterImport} onAiStatusChange={setAiStatus} isAiSidebarOpen={isAiSidebarOpen} onAiSidebarClose={() => setIsAiSidebarOpen(false)} aiStatus={aiStatus} />
       </div>
     </div>
   )
